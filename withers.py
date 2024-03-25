@@ -1,3 +1,8 @@
+'''
+Withers
+A discord bot that parses PCPartPicker (hereafter PCPP) list links and posts them as a user-readable message, similar to PCPP's in-house Smithers bot
+Authors: NerdyKyogre and Spiritfader
+'''
 import discord
 INTENTS = discord.Intents.default()
 INTENTS.message_content = True
@@ -10,8 +15,7 @@ def runBot():
     TOKEN = os.getenv("DISCORD_TOKEN")
     client = discord.Client(intents=INTENTS)
 
-    #print to console when we are live
-    #and handle processing of every message
+    #print to console when we are live and handle processing of every message
     #credit upwork https://www.upwork.com/resources/how-to-make-discord-bot
     @client.event
     async def on_ready():
@@ -76,4 +80,7 @@ async def processMessage(message, userMessage):
         await message.channel.send(botResponse)
     except Exception as error:
         print(error)
+
+if __name__ =='__main__':
+    runBot() 
     
