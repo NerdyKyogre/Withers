@@ -1,6 +1,6 @@
 import discord
-intents = discord.Intents.default()
-intents.message_content = True
+INTENTS = discord.Intents.default()
+INTENTS.message_content = True
 import os
 from dotenv import load_dotenv
 
@@ -8,11 +8,11 @@ def runBot():
     #get discord token from .env file for security purposes
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
-    client = discord.Client(intents=intents)
+    client = discord.Client(intents=INTENTS)
 
     #print to console when we are live
     #and handle processing of every message
-    #credit upwork
+    #credit upwork https://www.upwork.com/resources/how-to-make-discord-bot
     @client.event
     async def on_ready():
         print({client.user}, 'is live')
@@ -22,7 +22,7 @@ def runBot():
         if message.author == client.user:
             return
         #only do anything if message contains relevant string
-        if "https://pcpartpicker.com/list/" in message.content:
+        if "pcpartpicker.com/list/" in message.content:
             await processMessage(message, message.content)
         else: 
             return
@@ -39,15 +39,26 @@ def msgHandler(msg):
 
     #find substring of list link
     try:
-        start = msg.index("https://pcpartpicker.com/list/")
+        start = msg.index("pcpartpicker.com/list/")
+        print(start)
     except Exception:
         return None
+    
+    #check for regional PCPP URLs, which are 31 characters long after https:// to USA's 28
+    if msg[start - 1] == ".":
+        start -= 3
+        length = 31
+    else: 
+        length = 28
 
-    #find substring of list link
-    #pcpp links are always 36 characters long
-    link = ""
-    for i in range(start, start + 36):
-        link += msg[i]
+    #figure out the actual url
+    link = "https://"
+    for i in range(start, start + length):
+        try:
+            link += msg[i] 
+        except Exception:
+            return("Invalid PCPP link.")
+            #todo: check for 404 errors in link. may happen in parser?
     
     #todo: parse data from pcpp url
     #response = parse(link)
