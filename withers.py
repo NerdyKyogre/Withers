@@ -8,15 +8,17 @@ INTENTS = discord.Intents.default()
 INTENTS.message_content = True
 import os
 from dotenv import load_dotenv
+import requests
+from bs4 import BeautifulSoup
 
 def runBot():
-    #get discord token from .env file for security purposes
+    # get discord token from .env file for security purposes
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
     client = discord.Client(intents=INTENTS)
 
-    #print to console when we are live and handle processing of every message
-    #credit upwork https://www.upwork.com/resources/how-to-make-discord-bot
+    # print to console when we are live and process every message
+    # credit upwork https://www.upwork.com/resources/how-to-make-discord-bot
     @client.event
     async def on_ready():
         print({client.user}, 'is live')
@@ -25,7 +27,7 @@ def runBot():
     async def on_message(message):
         if message.author == client.user:
             return
-        #only do anything if message contains relevant string
+        # only do anything if message contains relevant string
         if "pcpartpicker.com/list/" in message.content:
             await processMessage(message, message.content)
         else: 
@@ -41,21 +43,21 @@ def msgHandler(msg):
     Returns: response message, type string
     '''
 
-    #find substring of list link
+    # find substring of list link
     try:
         start = msg.index("pcpartpicker.com/list/")
         print(start)
     except Exception:
         return None
     
-    #check for regional PCPP URLs, which are 31 characters long after https:// to USA's 28
+    # check for regional PCPP URLs, which are 31 characters long after https:// to USA's 28
     if msg[start - 1] == ".":
         start -= 3
         length = 31
     else: 
         length = 28
 
-    #figure out the actual url
+    # figure out the actual url
     link = "https://"
     for i in range(start, start + length):
         try:
@@ -64,9 +66,16 @@ def msgHandler(msg):
             return("Invalid PCPP link.")
             #todo: check for 404 errors in link. may happen in parser?
     
-    #todo: parse data from pcpp url
-    #response = parse(link)
+    response = requests.get(link)
+    status_code = response.status_code
+    content = response.content
     
+    # response = parse(link)
+    soup.find('div', class_='partlist_wrapper')
+
+
+
+
     response = "I think you sent the PCPP link: " + link
     return response
 
