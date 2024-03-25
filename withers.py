@@ -10,6 +10,7 @@ import os
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
+from seleniumbase import Driver
 
 def runBot():
     # get discord token from .env file for security purposes
@@ -66,17 +67,17 @@ def msgHandler(msg):
             return("Invalid PCPP link.")
             #todo: check for 404 errors in link. may happen in parser?
     
-    response = requests.get(link)
-    status_code = response.status_code
-    content = response.content
+    driver = Driver(uc=True)
+    driver.get(link)
+    driver.sleep(1)
+    content = driver.page_source
+    driver.quit()
     
-    # response = parse(link)
-    soup.find('div', class_='partlist_wrapper')
-
-
-
-
-    response = "I think you sent the PCPP link: " + link
+    #todo: return if status code is invalid
+    
+    response = parseList(BeautifulSoup(content))
+    
+    #response = "I think you sent the PCPP link: " + link
     return response
 
 async def processMessage(message, userMessage):
@@ -89,6 +90,12 @@ async def processMessage(message, userMessage):
         await message.channel.send(botResponse)
     except Exception as error:
         print(error)
+
+def parseList(container):
+    info = container.find('div', class_='partlist__wrapper')
+    return info
+
+    
 
 if __name__ =='__main__':
     runBot() 
