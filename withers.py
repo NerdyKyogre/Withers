@@ -69,7 +69,6 @@ def msgHandler(msg):
     
     driver = Driver(uc=True)
     driver.get(link)
-    driver.sleep(1)
     content = driver.page_source
     driver.quit()
     
