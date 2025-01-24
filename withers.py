@@ -10,7 +10,9 @@ import os
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
-from seleniumbase import Driver
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 
 def runBot():
     # get discord token from .env file for security purposes
@@ -67,17 +69,44 @@ def msgHandler(msg):
             return("Invalid PCPP link.")
             #todo: check for 404 errors in link. may happen in parser?
     
-    driver = Driver(uc=True)
-    driver.get(link)
-    content = driver.page_source
-    driver.quit()
+    # initialize selenium chrome webdriver and begin scraping   
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-extensions')
+    #options.add_argument('--dns-prefetch-disable')
+    driver = webdriver.Chrome(options=options)
+        
+    # pull url with selenium and feed to soup for html parsing
+    url = "https://pcpartpicker.com/list/Nv7rL9"
+    driver.get(url)
+    soup = BeautifulSoup(driver.page_source,"html")
+
+    # define the table to pull
+    table = soup.find('table', class_='xs-col-12')
+
+    # extract table headers 
+    headers = [th.text.strip() for th in table.find_all('th')]
+
+    # extract table body
+    rows = []
+    for row in table.find_all('tr')[1:]:  
+        cells = [td.text.strip() for td in row.find_all('td')]
+        rows.append(cells)
+
+    # print table list
+    print("Headers:", headers)
+    print("table_body:")
+    for row in rows:
+        print(row)
+
+
+    response = "I think you sent the PCPP link:\n"
+    response2 = "<" + link + ">\n"
+
+    return response + response2
     
-    #todo: return if status code is invalid
-    
-    response = parseList(BeautifulSoup(content))
-    
-    #response = "I think you sent the PCPP link: " + link
-    return response
 
 async def processMessage(message, userMessage):
     '''
