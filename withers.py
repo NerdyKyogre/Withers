@@ -16,7 +16,6 @@ def runBot():
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
     client = discord.Client(intents=INTENTS)
-
     # print to console when we are live and process every message
     # credit upwork https://www.upwork.com/resources/how-to-make-discord-bot
     @client.event
@@ -45,6 +44,7 @@ def msgHandler(msg):
     # find substring of list link
     try:
         start = msg.index("pcpartpicker.com/list/")
+        siteSource="PCPartPicker"
         print(start)
     except Exception:
         return None
@@ -88,26 +88,33 @@ def msgHandler(msg):
         rows.append(cells)
     rows.pop()
 
-    # print message header
-    response = "PCPP List Link:\n"
-    response += "<" + link + ">\n```"
-
     # initialize total build cost
     total = 0.00
+
+    # print message header
+    embed = discord.Embed(title=siteSource+"\n"+link, description="Sent by user", color=0xFF55FF)
+
+    # formulate build list
+    types = ""
+    names = ""
+    costs = ""
 
     for row in rows:
         partType = row[0]
         while len(partType) < 14:
             partType += " "
-        
+        types += (partType + "\n")
+
         partName = row[3]
         partName = partName.replace("\u200b", "")
 
-        if len(partName) > 30:
-            partName = partName[0:29]
-        while len(partName) < 30:
+        if len(partName) > 50:
+            partName = partName[0:49]
+        while len(partName) < 49:
             partName += " "
+        names += (partName + "..." + "\n")
         
+
         partPrice = row[8][8:]
         try:
             total += float(partPrice)
@@ -116,24 +123,30 @@ def msgHandler(msg):
         
         while len(partPrice) < 8:
             partPrice = " " + partPrice
+        costs += (partPrice + "\n")
 
-        response += (partType + partName + partPrice + "$\n")
+    priceTotal = "{:.2f}".format(total)
 
-    response += "----------------------------------------------------\n"
-    strTotal = "{:.2f}".format(total)
-    response += ("TOTAL: $" + strTotal)
-    response += "```\n"
-    return response
+    # structure embed output
+    embed.add_field(name="Type", value=types, inline=True)
+    embed.add_field(name="Name", value=names, inline=True)
+    embed.add_field(name="Cost", value=costs, inline=True)
+    embed.add_field(name="Total:", value=priceTotal, inline=False)
+    #embed.add_field(name="Compatibility: ", value="buildCompat", inline=False)
+    #embed.add_field(name="PSU Wattage: ", value="buildWattage", inline=False)
+
+    return(embed)
     
-
-async def processMessage(message, userMessage):
+async def processMessage(message, embed):
     '''
     Sends messages between the user and the bot
     Credit https://www.upwork.com/resources/how-to-make-discord-bot
     '''
     try:
-        botResponse = msgHandler(userMessage)
-        await message.channel.send(botResponse)
+        #botResponse = msgHandler(embed)
+        #await message.channel.send(botResponse)
+        await message.channel.send(embed=msgHandler(embed))
+
     except Exception as error:
         print(error)
     
