@@ -79,15 +79,14 @@ def msgHandler(msg):
     driver = webdriver.Chrome(options=options)
         
     # pull url with selenium and feed to soup for html parsing
-    url = "https://pcpartpicker.com/list/Nv7rL9"
-    driver.get(url)
+    driver.get(link)
     soup = BeautifulSoup(driver.page_source,"html")
 
     # define the table to pull
     table = soup.find('table', class_='xs-col-12')
 
     # extract table headers 
-    headers = [th.text.strip() for th in table.find_all('th')]
+    #headers = [th.text.strip() for th in table.find_all('th')]
 
     # extract table body
     rows = []
@@ -95,13 +94,6 @@ def msgHandler(msg):
         cells = [td.text.strip() for td in row.find_all('td')]
         rows.append(cells)
     rows.pop()
-
-    # print table list
-    print("Headers:", headers)
-    print("table_body:")
-    for row in rows:
-        print(row)
-
 
     response = "PCPP List Link:\n"
     response += "<" + link + ">\n\n```"
@@ -125,7 +117,7 @@ def msgHandler(msg):
         try:
             total += float(partPrice)
         except Exception:
-            partPrice = "N/A"
+            partPrice = "-"
         
         while len(partPrice) < 8:
             partPrice = " " + partPrice
