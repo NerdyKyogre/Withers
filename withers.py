@@ -94,6 +94,7 @@ def msgHandler(msg):
     for row in table.find_all('tr')[1:]:  
         cells = [td.text.strip() for td in row.find_all('td')]
         rows.append(cells)
+    rows.pop()
 
     # print table list
     print("Headers:", headers)
@@ -102,10 +103,40 @@ def msgHandler(msg):
         print(row)
 
 
-    response = "I think you sent the PCPP link:\n"
-    response2 = "<" + link + ">\n"
+    response = "PCPP List Link:\n"
+    response += "<" + link + ">\n\n```"
 
-    return response + response2
+    total = 0.00
+
+    for row in rows:
+        partType = row[0]
+        while len(partType) < 14:
+            partType += " "
+        
+        partName = row[3]
+        partName = partName.replace("\u200b", "")
+
+        if len(partName) > 30:
+            partName = partName[0:29]
+        while len(partName) < 30:
+            partName += " "
+        
+        partPrice = row[8][8:]
+        try:
+            total += float(partPrice)
+        except Exception:
+            partPrice = "N/A"
+        
+        while len(partPrice) < 8:
+            partPrice = " " + partPrice
+
+        response += (partType + " | " + partName + " | $" + partPrice + "\n")
+
+    response += "----------------------------------------------------\n"
+    strTotal = "{:.2f}".format(total)
+    response += ("TOTAL: $" + strTotal)
+    response += "```\n"
+    return response
     
 
 async def processMessage(message, userMessage):
