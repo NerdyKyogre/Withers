@@ -10,6 +10,8 @@ import os
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from selenium import webdriver
+import datetime
+
 
 def runBot():
     # get discord token from .env file for security purposes
@@ -41,7 +43,7 @@ def msgHandler(msg):
         msg - message to parse, type string
     Returns: response message, type string
     '''
-
+    curSym = (("$", "€", "£", "¥"))
     # find substring of list link
     try:
         start = msg.index("pcpartpicker.com/list/")
@@ -55,6 +57,7 @@ def msgHandler(msg):
         length = 31
     else: 
         length = 28
+        locale=curSym[0]
 
     # figure out the actual url
     link = "https://"
@@ -136,9 +139,12 @@ def msgHandler(msg):
     embed.add_field(name="Type", value=types, inline=True)
     embed.add_field(name="Name", value=names, inline=True)
     embed.add_field(name="Cost", value=costs, inline=True)
-    embed.add_field(name="Total:", value=priceTotal, inline=False)
+    embed.add_field(name="Total:", value=locale+priceTotal, inline=False)
     #embed.add_field(name="Compatibility: ", value="buildCompat", inline=False)
     #embed.add_field(name="PSU Wattage: ", value="buildWattage", inline=False)
+    #embed.set_footer(text='\u200b',icon_url="")
+    embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+    
 
     return(embed)
     
