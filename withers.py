@@ -16,6 +16,7 @@ def runBot():
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
     client = discord.Client(intents=INTENTS)
+
     # print to console when we are live and process every message
     # credit upwork https://www.upwork.com/resources/how-to-make-discord-bot
     @client.event
@@ -45,7 +46,6 @@ def msgHandler(msg):
     try:
         start = msg.index("pcpartpicker.com/list/")
         siteSource="PCPartPicker"
-        print(start)
     except Exception:
         return None
     
@@ -65,18 +65,24 @@ def msgHandler(msg):
             return("Invalid PCPP link.")
             #todo: check for 404 errors in link. may happen in parser?
     
-    # initialize selenium chrome webdriver and begin scraping   
+    # initialize selenium chrome webdriver with settings
+    useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
-    #options.add_argument('--dns-prefetch-disable')
+    options.add_argument('--dns-prefetch-disable')
+    options.add_argument("--user-agent="+useragent)
     driver = webdriver.Chrome(options=options)
-        
-    # pull url with selenium and feed to soup for html parsing
+    
+    # display user-agent for testing 
+    #driver_ua = driver.execute_script("return navigator.userAgent")
+    #print("User agent in-use: "+driver_ua)
+    
+    # scrape url with selenium and feed to soup for html parsing
     driver.get(link)
-    soup = BeautifulSoup(driver.page_source,"lxml")
+    soup = BeautifulSoup(driver.page_source,"html.parser")
 
     # define the table to pull
     table = soup.find('table', class_='xs-col-12')
@@ -114,7 +120,6 @@ def msgHandler(msg):
             partName += " "
         names += (partName + "..." + "\n")
         
-
         partPrice = row[8][8:]
         try:
             total += float(partPrice)
@@ -143,10 +148,7 @@ async def processMessage(message, embed):
     Credit https://www.upwork.com/resources/how-to-make-discord-bot
     '''
     try:
-        #botResponse = msgHandler(embed)
-        #await message.channel.send(botResponse)
         await message.channel.send(embed=msgHandler(embed))
-
     except Exception as error:
         print(error)
     
