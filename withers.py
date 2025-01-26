@@ -31,19 +31,20 @@ def runBot():
             return
         # only do anything if message contains relevant string
         if "pcpartpicker.com/list/" in message.content:
-            await processMessage(message, message.content)
+            await processMessage(message, message.content, str(message.author))
         else: 
             return
     client.run(TOKEN)
 
-def msgHandler(msg):
+def msgHandler(msg, sender):
     '''
     Checks visible channels for messages containing PCPP list links
     Inputs: 
         msg - message to parse, type string
+        sender - author of calling message, as string
     Returns: response message, type string
     '''
-    curSym = (("$", "€", "£", "¥"))
+    curSyms = {"au":"$", "at":"€", "be":"€", "ca":"$", "cz":"Kč", "dk":"kr", "fi":"€", "fr":"€", "de":"€", "hu":"Ft", "ie":"€", "it":"€", "nl":"€", "nz":"$", "no":"kr", "pt":"€", "ro":"RON", "sa":"SR", "sk":"€", "es":"€", "se":"kr", "uk":"£", "us":"$"}
     # find substring of list link
     try:
         start = msg.index("pcpartpicker.com/list/")
@@ -55,9 +56,13 @@ def msgHandler(msg):
     if msg[start - 1] == ".":
         start -= 3
         length = 31
+        try:
+            locale=curSyms[msg[start:(start + 2)]] 
+        except Exception:
+            locale=""
     else: 
         length = 28
-        locale=curSym[0]
+        locale=curSyms["us"]
 
     # figure out the actual url
     link = "https://"
@@ -94,14 +99,14 @@ def msgHandler(msg):
     rows = []
     for row in table.find_all('tr')[1:]:  
         cells = [td.text.strip() for td in row.find_all('td')]
-        rows.append(cells)
-    rows.pop()
+        if len(cells) > 3:
+            rows.append(cells)
 
     # initialize total build cost
     total = 0.00
 
     # print message header
-    embed = discord.Embed(title=siteSource+"\n"+link, description="Sent by user", color=0xFF55FF)
+    embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender), color=0xFF55FF)
 
     # formulate build list
     types = ""
@@ -126,6 +131,7 @@ def msgHandler(msg):
         partPrice = row[8][8:]
         try:
             total += float(partPrice)
+            partPrice = (locale + partPrice)
         except Exception:
             partPrice = "-"
         
@@ -139,7 +145,7 @@ def msgHandler(msg):
     embed.add_field(name="Type", value=types, inline=True)
     embed.add_field(name="Name", value=names, inline=True)
     embed.add_field(name="Cost", value=costs, inline=True)
-    embed.add_field(name="Total:", value=locale+priceTotal, inline=False)
+    embed.add_field(name="Total:", value=(locale+priceTotal), inline=False)
     #embed.add_field(name="Compatibility: ", value="buildCompat", inline=False)
     #embed.add_field(name="PSU Wattage: ", value="buildWattage", inline=False)
     #embed.set_footer(text='\u200b',icon_url="")
@@ -148,13 +154,13 @@ def msgHandler(msg):
 
     return(embed)
     
-async def processMessage(message, embed):
+async def processMessage(message, userMessage, sender):
     '''
     Sends messages between the user and the bot
     Credit https://www.upwork.com/resources/how-to-make-discord-bot
     '''
     try:
-        await message.channel.send(embed=msgHandler(embed))
+        await message.channel.send(embed=msgHandler(userMessage, sender))
     except Exception as error:
         print(error)
     
