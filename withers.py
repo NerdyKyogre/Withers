@@ -96,20 +96,17 @@ def msgHandler(msg, sender):
     # define the table to pull
     table = soup.find('table', class_='xs-col-12')
     
-    buildWattage = ' '.join(soup.find('div', class_='partlist__keyMetric',).text.split())
+    buildWattage = (' '.join(soup.find('div', class_='partlist__keyMetric',).text.split()))[-5:]
     
     compatHeader = soup.find('div', class_='subTitle__header').find('h2').text
+    compatNotes = ""
+    compatTags = soup.find_all('p', {'class':['note__text note__text--info','note__text note__text--warning']})
+    compatTags.pop()
 
-    compatNotes = []
-
-    for note in soup.find_all('ul', class_='allocations__notes list-unstyled'):
-        compatNotes.append(note.text.strip().rstrip('\n'))
-
-    #for note in soup.find_all('p', class_='note__text note__text--'):
-    #    print(note)
-    #    #compatNotes += (note.text.rstrip('\n') + "1") 
-
-    print(compatNotes)
+    for note in compatTags:
+        note = str(note)
+        note = note[note.find("</span>") + 8:-4]
+        compatNotes += ("- " + note + "\n") 
     
     # extract table body
     rows = []
@@ -162,8 +159,9 @@ def msgHandler(msg, sender):
     embed.add_field(name="Name", value=names, inline=True)
     embed.add_field(name="Cost", value=costs, inline=True)
     embed.add_field(name="Total:", value=(locale+priceTotal), inline=False)
-    embed.add_field(name=compatHeader, value=compatNotes, inline=False)
-    embed.add_field(name="PSU", value=buildWattage, inline=False)
+    if len(compatNotes) > 0:
+        embed.add_field(name=compatHeader, value=compatNotes, inline=False)
+    embed.add_field(name="Estimated Wattage", value=buildWattage, inline=False)
     #embed.set_footer(text='\u200b',icon_url="")
     embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
     
