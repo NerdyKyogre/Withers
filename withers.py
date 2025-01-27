@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from selenium import webdriver
 import datetime
+import re
 
 
 def runBot():
@@ -94,7 +95,22 @@ def msgHandler(msg, sender):
 
     # define the table to pull
     table = soup.find('table', class_='xs-col-12')
+    
+    buildWattage = ' '.join(soup.find('div', class_='partlist__keyMetric',).text.split())
+    
+    compatHeader = soup.find('div', class_='subTitle__header').find('h2').text
 
+    compatNotes = []
+
+    for note in soup.find_all('ul', class_='allocations__notes list-unstyled'):
+        compatNotes.append(note.text.strip().rstrip('\n'))
+
+    #for note in soup.find_all('p', class_='note__text note__text--'):
+    #    print(note)
+    #    #compatNotes += (note.text.rstrip('\n') + "1") 
+
+    print(compatNotes)
+    
     # extract table body
     rows = []
     for row in table.find_all('tr')[1:]:  
@@ -146,8 +162,8 @@ def msgHandler(msg, sender):
     embed.add_field(name="Name", value=names, inline=True)
     embed.add_field(name="Cost", value=costs, inline=True)
     embed.add_field(name="Total:", value=(locale+priceTotal), inline=False)
-    #embed.add_field(name="Compatibility: ", value="buildCompat", inline=False)
-    #embed.add_field(name="PSU Wattage: ", value="buildWattage", inline=False)
+    embed.add_field(name=compatHeader, value=compatNotes, inline=False)
+    embed.add_field(name="PSU", value=buildWattage, inline=False)
     #embed.set_footer(text='\u200b',icon_url="")
     embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
     
