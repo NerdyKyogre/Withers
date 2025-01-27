@@ -11,15 +11,13 @@ from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from selenium import webdriver
 import datetime
-import re
-
 
 def runBot():
     # get discord token from .env file for security purposes
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
     client = discord.Client(intents=INTENTS)
-
+    
     # print to console when we are live and process every message
     # credit upwork https://www.upwork.com/resources/how-to-make-discord-bot
     @client.event
@@ -32,7 +30,7 @@ def runBot():
             return
         # only do anything if message contains relevant string
         if "pcpartpicker.com/list/" in message.content:
-            await processMessage(message, message.content, str(message.author))
+            await processMessage(message, message.content, str(message.author.mention))
         else: 
             return
     client.run(TOKEN)
@@ -85,7 +83,7 @@ def msgHandler(msg, sender):
     options.add_argument("--user-agent="+useragent)
     driver = webdriver.Chrome(options=options)
     
-    # display user-agent for testing 
+    # print user-agent to console for testing 
     #driver_ua = driver.execute_script("return navigator.userAgent")
     #print("User agent in-use: "+driver_ua)
     
@@ -96,8 +94,10 @@ def msgHandler(msg, sender):
     # define the table to pull
     table = soup.find('table', class_='xs-col-12')
     
+    # scrape and format build wattage
     buildWattage = (' '.join(soup.find('div', class_='partlist__keyMetric',).text.split()))[-5:]
     
+    # scrape and format compatibility notes
     compatHeader = soup.find('div', class_='subTitle__header').find('h2').text
     compatNotes = ""
     compatTags = soup.find_all('p', {'class':['note__text note__text--info','note__text note__text--warning']})
@@ -108,7 +108,7 @@ def msgHandler(msg, sender):
         note = note[note.find("</span>") + 8:-4]
         compatNotes += ("- " + note + "\n") 
     
-    # extract table body
+    # scrape and format partslist table body
     rows = []
     for row in table.find_all('tr')[1:]:  
         cells = [td.text.strip() for td in row.find_all('td')]
@@ -118,53 +118,42 @@ def msgHandler(msg, sender):
     # initialize total build cost
     total = 0.00
 
-    # print message header
-    embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender), color=0xFF55FF)
-
-    # formulate build list
-    types = ""
-    names = ""
-    costs = ""
+    # structure partslist output
+    componentList = ""
 
     for row in rows:
-        partType = row[0]
-        while len(partType) < 14:
-            partType += " "
-        types += (partType + "\n")
+        partType = "**" + row[0] + "**"
 
-        partName = row[3]
-        partName = partName.replace("\u200b", "")
+        partName = row[3].replace("\u200b", "")
 
-        if len(partName) > 50:
-            partName = partName[0:49]
-        while len(partName) < 49:
-            partName += " "
-        names += (partName + "..." + "\n")
-        
+        if partName.find("\n"):
+            partName = partName[0:partName.find("\n")]
+
         partPrice = row[8][8:]
         try:
             total += float(partPrice)
-            partPrice = (locale + partPrice)
+            if (partPrice == "00"):
+                partPrice = "0.00"
+            partPrice = ("``" + locale + partPrice + "``")
         except Exception:
-            partPrice = "-"
-        
-        while len(partPrice) < 8:
-            partPrice = " " + partPrice
-        costs += (partPrice + "\n")
+            partPrice = "``N/A``"
+
+        partlist = partType + " - " + partPrice + " - " + partName
+
+        if len(partlist) > 83:
+            componentList += partlist[0:80].strip() + "...\n"
+        if len(partlist) < 83:
+            componentList += partlist + "\n"
 
     priceTotal = "{:.2f}".format(total)
-
+    
     # structure embed output
-    embed.add_field(name="Type", value=types, inline=True)
-    embed.add_field(name="Name", value=names, inline=True)
-    embed.add_field(name="Cost", value=costs, inline=True)
-    embed.add_field(name="Total:", value=(locale+priceTotal), inline=False)
+    embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF)
+    embed.add_field(name="Total:", value=("``"+locale+priceTotal+"``"), inline=False)
+    embed.add_field(name="Estimated Wattage", value=buildWattage, inline=False)
     if len(compatNotes) > 0:
         embed.add_field(name=compatHeader, value=compatNotes, inline=False)
-    embed.add_field(name="Estimated Wattage", value=buildWattage, inline=False)
-    #embed.set_footer(text='\u200b',icon_url="")
     embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
-    
 
     return(embed)
     
