@@ -12,6 +12,22 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 import datetime
 
+class MyView(discord.ui.View):
+    def __init__(self, soup):
+        super(MyView, self).__init__()
+        self.soup = soup
+    
+    #todo: make these buttons do the things on their labels
+    @discord.ui.button(label='Open List', style=discord.ButtonStyle.blurple)
+    async def on_button_1_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(content='Button 1 clicked!')
+    @discord.ui.button(label='Edit List', style=discord.ButtonStyle.blurple)
+    async def on_button_1_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(content='Button 2 clicked!')
+    @discord.ui.button(label='Save List', style=discord.ButtonStyle.blurple)
+    async def on_button_2_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(content='Button 3 clicked!')
+
 def runBot():
     # get discord token from .env file for security purposes
     load_dotenv()
@@ -35,19 +51,11 @@ def runBot():
             return
     client.run(TOKEN)
 
-def msgHandler(msg, sender):
-    '''
-    Checks visible channels for messages containing PCPP list links
-    Inputs: 
-        msg - message to parse, type string
-        sender - author of calling message, as string
-    Returns: response message, type string
-    '''
+def getPcppLink(msg):
     curSyms = {"au":"$", "at":"€", "be":"€", "ca":"$", "cz":"Kč", "dk":"kr", "fi":"€", "fr":"€", "de":"€", "hu":"Ft", "ie":"€", "it":"€", "nl":"€", "nz":"$", "no":"kr", "pt":"€", "ro":"RON", "sa":"SR", "sk":"€", "es":"€", "se":"kr", "uk":"£", "us":"$"}
     # find substring of list link
     try:
         start = msg.index("pcpartpicker.com/list/")
-        siteSource="PCPartPicker"
     except Exception:
         return None
     
@@ -69,9 +77,13 @@ def msgHandler(msg, sender):
         try:
             link += msg[i] 
         except Exception:
-            return("Invalid PCPP link.")
+            #return("Invalid PCPP link.", "")
+            raise SyntaxError("Invalid PCPP Link")
             #todo: check for 404 errors in link. may happen in parser?
     
+    return(link, locale)
+
+def pcppSoup(link):
     # initialize selenium chrome webdriver with settings
     useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
     options = webdriver.ChromeOptions()
@@ -90,6 +102,28 @@ def msgHandler(msg, sender):
     # scrape url with selenium and feed to soup for html parsing
     driver.get(link)
     soup = BeautifulSoup(driver.page_source,"html.parser")
+
+    return soup
+
+def msgHandler(msg, sender, soup, linkTuple):
+    '''
+    Checks visible channels for messages containing PCPP list links
+    Inputs: 
+        msg - message to parse, type string
+        sender - author of calling message, as string
+        soup - BeautifulSoup object output from scraper
+        linkTuple - A tuple containing the link and its local currency symbol, as strings
+    Returns: response message, type string
+    '''
+    link, locale = linkTuple
+
+    siteSource="PCPartPicker" #temporarily hard coded until we add support for other part comparison systems
+    '''
+    try:
+        link, locale = getPCPPLink(msg)
+    except SyntaxError:
+        raise Exception("Failed to parse link. This may be due to an invalid link format.")
+    '''
 
     # define the table to pull
     table = soup.find('table', class_='xs-col-12')
@@ -111,8 +145,21 @@ def msgHandler(msg, sender):
     # scrape and format partslist table body
     rows = []
     for row in table.find_all('tr')[1:]:  
-        cells = [td.text.strip() for td in row.find_all('td')]
-        if len(cells) > 3:
+        cells = []
+        for td in row.find_all('td'):
+            cells.append(td.text.strip())
+            #grab link
+            tdClass = td.get("class")
+            if tdClass is not None and "td__name" in tdClass:
+                for a in td.find_all('a'):
+                    url = str(a)
+                    url = url[(url.find("href") + 6):]
+                    url = url[:url.find("\">")]
+                    if (url.find("view_custom_part") < 0):
+                        cells.append("https://pcpartpicker.com" + url)
+                        cells.append(True)
+
+        if len(cells) > 3:    
             rows.append(cells)
 
     # initialize total build cost
@@ -121,15 +168,23 @@ def msgHandler(msg, sender):
     # structure partslist output
     componentList = ""
 
+    listLength = 0
+
     for row in rows:
         partType = "**" + row[0] + "**"
+        listLength += len(partType)
 
         partName = row[3].replace("\u200b", "")
 
-        if partName.find("\n"):
-            partName = partName[0:partName.find("\n")]
+        index = partName.find("\n")
+        if index >= 0:
+            partName = partName[0:(index + 1)].strip()
 
-        partPrice = row[8][8:]
+        if row[5] == True:
+            partName = ("[" + partName + "](" + row[4].strip() + ")")
+        listLength += len(partName)
+
+        partPrice = row[10][8:]
         try:
             total += float(partPrice)
             if (partPrice == "00"):
@@ -138,22 +193,36 @@ def msgHandler(msg, sender):
         except Exception:
             partPrice = "``N/A``"
 
-        partlist = partType + " - " + partPrice + " - " + partName
+        listLength += len(partPrice)
 
-        if len(partlist) > 83:
-            componentList += partlist[0:80].strip() + "...\n"
-        if len(partlist) < 83:
+        if listLength > 3700:
+            componentList += "Sorry, this part list is too long. Please click the list link to view the rest of the parts."
+            break
+
+        partlist = partType + " - " + partPrice + " - " + partName
+        #wrapping disabled for aesthetic testing with links. can be re-enabled by uncommenting below block, but is not compatible with markdown urls being added yet
+        '''
+        if len(partlist) > 74: #83
+            componentList += partlist[0:71].strip() + "...\n" #80
+        if len(partlist) <= 74:
             componentList += partlist + "\n"
+        '''
+        componentList += partlist + "\n"
 
     priceTotal = "{:.2f}".format(total)
     
     # structure embed output
-    embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF)
-    embed.add_field(name="Total:", value=("``"+locale+priceTotal+"``"), inline=False)
-    embed.add_field(name="Estimated Wattage", value=buildWattage, inline=False)
-    if len(compatNotes) > 0:
-        embed.add_field(name=compatHeader, value=compatNotes, inline=False)
-    embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+    embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF) #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
+    #failover in the event of a footer of length >396 should be to skip rendering the footer and send the embed anyway
+    #this behaviour can be changed later
+    try:
+        embed.add_field(name="Total:", value=("``"+locale+priceTotal+"``"), inline=False)
+        embed.add_field(name="Estimated Wattage", value=buildWattage, inline=False)
+        if len(compatNotes) > 0:
+            embed.add_field(name=compatHeader, value=compatNotes, inline=False)
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+    except Exception:
+        pass
 
     return(embed)
     
@@ -163,7 +232,10 @@ async def processMessage(message, userMessage, sender):
     Credit https://www.upwork.com/resources/how-to-make-discord-bot
     '''
     try:
-        await message.channel.send(embed=msgHandler(userMessage, sender))
+        link = getPcppLink(userMessage)
+        soup = pcppSoup(link[0])
+        await message.channel.send(embed=msgHandler(userMessage, sender, soup, link), view=MyView(soup))
+        #await message.channel.send(embed=msgHandler(userMessage, sender))
     except Exception as error:
         print(error)
     
