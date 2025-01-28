@@ -13,20 +13,40 @@ from selenium import webdriver
 import datetime
 
 class MyView(discord.ui.View):
-    def __init__(self, soup):
+    def __init__(self, soup, link):
+        '''
+        Instantiates a custom view below the embed with the necessary URL buttons for list actions
+        inputs:
+        - Soup - beautifulsoup output from the list link
+        - link - tuple containing list url and local currency symbol
+        '''
         super(MyView, self).__init__()
         self.soup = soup
+
+        #style override appears to be non-functional if we use a url
+        openButton = discord.ui.Button(label='Open List', style=discord.ButtonStyle.blurple, url=link[0])
+        self.add_item(openButton)
+        #TODO: make edit and save buttons work properly
+        editButton = discord.ui.Button(label='Edit List', style=discord.ButtonStyle.blurple, url=link[0])
+        self.add_item(editButton)
+        saveButton = discord.ui.Button(label='Save List', style=discord.ButtonStyle.blurple, url=link[0])
+        self.add_item(saveButton)
     
     #todo: make these buttons do the things on their labels
-    @discord.ui.button(label='Open List', style=discord.ButtonStyle.blurple)
+    '''
+    @discord.ui.button(label='Open List', style=discord.ButtonStyle.url, url='https://pcpartpicker.com')
     async def on_button_1_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await interaction.response.edit_message(content='Button 1 clicked!')
-    @discord.ui.button(label='Edit List', style=discord.ButtonStyle.blurple)
-    async def on_button_1_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await interaction.response.edit_message(content='Button 2 clicked!')
-    @discord.ui.button(label='Save List', style=discord.ButtonStyle.blurple)
+        #await interaction.response.edit_message(content='Button 1 clicked!')
+        pass
+    @discord.ui.button(label='Edit List', style=discord.ButtonStyle.url, url='https://pcpartpicker.com')
     async def on_button_2_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        await interaction.response.edit_message(content='Button 3 clicked!')
+        #await interaction.response.edit_message(content='Button 2 clicked!')
+        pass
+    @discord.ui.button(label='Save List', style=discord.ButtonStyle.url, url='https://pcpartpicker.com')
+    async def on_button_3_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        #await interaction.response.edit_message(content='Button 3 clicked!')
+        pass
+    '''
 
 def runBot():
     # get discord token from .env file for security purposes
@@ -167,8 +187,9 @@ def msgHandler(msg, sender, soup, linkTuple):
 
     # structure partslist output
     componentList = ""
-
     listLength = 0
+    tooLong = False
+    overCount = 0
 
     for row in rows:
         partType = "**" + row[0] + "**"
@@ -194,10 +215,11 @@ def msgHandler(msg, sender, soup, linkTuple):
             partPrice = "``N/A``"
 
         listLength += len(partPrice)
-
-        if listLength > 3700:
-            componentList += "Sorry, this part list is too long. Please click the list link to view the rest of the parts."
-            break
+        if (not tooLong) and (listLength > 3700):
+            tooLong = True
+        if tooLong:
+            overCount += 1
+            continue
 
         partlist = partType + " - " + partPrice + " - " + partName
         #wrapping disabled for aesthetic testing with links. can be re-enabled by uncommenting below block, but is not compatible with markdown urls being added yet
@@ -208,6 +230,9 @@ def msgHandler(msg, sender, soup, linkTuple):
             componentList += partlist + "\n"
         '''
         componentList += partlist + "\n"
+
+    if tooLong:
+        componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " parts were not shown. Please click one of the buttons below to see the full list.*")
 
     priceTotal = "{:.2f}".format(total)
     
@@ -234,7 +259,7 @@ async def processMessage(message, userMessage, sender):
     try:
         link = getPcppLink(userMessage)
         soup = pcppSoup(link[0])
-        await message.channel.send(embed=msgHandler(userMessage, sender, soup, link), view=MyView(soup))
+        await message.channel.send(embed=msgHandler(userMessage, sender, soup, link), view=MyView(soup, link))
         #await message.channel.send(embed=msgHandler(userMessage, sender))
     except Exception as error:
         print(error)
