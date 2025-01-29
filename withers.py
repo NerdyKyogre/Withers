@@ -20,20 +20,22 @@ class MyView(discord.ui.View):
         Instantiates a custom view below the embed with the necessary URL buttons for list actions
         inputs:
         - Soup - beautifulsoup output from the list link
-        - link - tuple containing list url and local currency symbol
+        - link - list url as string
+        - buttons - tuple containing button functions in order edit, save
         '''
         super(MyView, self).__init__()
+        self.link = link
         self.soup = soup
         self.buttons = buttons
 
         #style override appears to be non-functional if we use a url
-        openButton = discord.ui.Button(label='Open List', style=discord.ButtonStyle.url, url=link[0])
+        openButton = discord.ui.Button(label='Open List', style=discord.ButtonStyle.url, url=self.link)
         self.add_item(openButton)
 
-        editButton = discord.ui.Button(label='Edit List', style=discord.ButtonStyle.url, url=self.buttons[0])
+        editButton = discord.ui.Button(label='Edit List', style=discord.ButtonStyle.url, url=self.link)#self.buttons[0])
         self.add_item(editButton)
         
-        saveButton = discord.ui.Button(label='Save List', style=discord.ButtonStyle.url, url=self.buttons[1])
+        saveButton = discord.ui.Button(label='Save List', style=discord.ButtonStyle.url, url=self.link)#self.buttons[1])
         self.add_item(saveButton)
     
 def runBot():
@@ -60,7 +62,7 @@ def runBot():
     client.run(TOKEN)
 
 def getPcppLink(msg):
-    curSyms = {"au":"$", "at":"€", "be":"€", "ca":"$", "cz":"Kč", "dk":"kr", "fi":"€", "fr":"€", "de":"€", "hu":"Ft", "ie":"€", "it":"€", "nl":"€", "nz":"$", "no":"kr", "pt":"€", "ro":"RON", "sa":"SR", "sk":"€", "es":"€", "se":"kr", "uk":"£", "us":"$"}
+    #curSyms = {"au":"$", "at":"€", "be":"€", "ca":"$", "cz":"Kč", "dk":"kr", "fi":"€", "fr":"€", "de":"€", "hu":"Ft", "ie":"€", "it":"€", "nl":"€", "nz":"$", "no":"kr", "pt":"€", "ro":"RON", "sa":"SR", "sk":"€", "es":"€", "se":"kr", "uk":"£", "us":"$"}
     # find substring of list link
     try:
         start = msg.index("pcpartpicker.com/list/")
@@ -68,16 +70,19 @@ def getPcppLink(msg):
         return None
     
     # check for regional PCPP URLs, which are 31 characters long after https:// to USA's 28
+    #commented out sections are for the legacy locale dictionary setup, which is no longer used by msgHandler.
     if msg[start - 1] == ".":
         start -= 3
         length = 31
+        '''
         try:
             locale=curSyms[msg[start:(start + 2)]] 
         except Exception:
             locale=""
+        '''
     else: 
         length = 28
-        locale=curSyms["us"]
+        #locale=curSyms["us"]
 
     # figure out the actual url
     link = "https://"
@@ -89,14 +94,14 @@ def getPcppLink(msg):
             raise SyntaxError("Invalid PCPP Link")
             #todo: check for 404 errors in link. may happen in parser?
     
-    return(link, locale)
+    return link
 
 def pcppSoup(link):
     # initialize selenium chrome webdriver with settings
     useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
     options = webdriver.ChromeOptions()
-    #options.add_argument('--headless')
-    #options.add_argument('--window-size=1920x1080')
+    options.add_argument('--headless')
+    options.add_argument('--window-size=1920x1080')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
@@ -114,21 +119,19 @@ def pcppSoup(link):
     soup = BeautifulSoup(driver.page_source,"html.parser")
 
     editClick = driver.find_element(By.CLASS_NAME, "actionBox__options--edit")
-    saveClick = driver.find_element(By.CLASS_NAME, "actionBox__options--save").click()
+    saveClick = driver.find_element(By.CLASS_NAME, "actionBox__options--save")
 
     return (soup, (editClick, saveClick))
 
-def msgHandler(msg, sender, soup, linkTuple):
+def tableHandler(sender, soup, link):
     '''
-    Checks visible channels for messages containing PCPP list links
+    Parses data table from PCPP list link
     Inputs: 
-        msg - message to parse, type string
         sender - author of calling message, as string
         soup - BeautifulSoup object output from scraper
-        linkTuple - A tuple containing the link and its local currency symbol, as strings
+        link - part list link, as a string
     Returns: response message, type string
     '''
-    link, locale = linkTuple
 
     siteSource="PCPartPicker" #temporarily hard coded until we add support for other part comparison systems
     '''
@@ -157,6 +160,7 @@ def msgHandler(msg, sender, soup, linkTuple):
     
     # scrape and format partslist table body
     rows = []
+    shortRows = []
     for row in table.find_all('tr')[1:]:  
         cells = []
         for td in row.find_all('td'):
@@ -174,6 +178,8 @@ def msgHandler(msg, sender, soup, linkTuple):
 
         if len(cells) > 3:    
             rows.append(cells)
+        else:
+            shortRows.append(cells)
 
     # initialize total build cost
     total = 0.00
@@ -198,14 +204,11 @@ def msgHandler(msg, sender, soup, linkTuple):
             partName = ("[" + partName + "](" + row[4].strip() + ")")
         listLength += len(partName)
 
-        partPrice = row[10][7:]
-        try:
-            total += float(partPrice)
-            if (partPrice == "00"):
-                partPrice = "0.00"
-            partPrice = ("``" + locale + partPrice + "``")
-        except Exception:
+        partPrice = row[10][6:]
+        if partPrice == "o Prices Available":
             partPrice = "``N/A``"
+        else:
+            partPrice = ("``" + partPrice + "``") 
 
         listLength += len(partPrice)
         if (not tooLong) and (listLength > 3700):
@@ -227,14 +230,19 @@ def msgHandler(msg, sender, soup, linkTuple):
     if tooLong:
         componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " parts were not shown. Please click one of the buttons below to see the full list.*")
 
-    priceTotal = "{:.2f}".format(total)
+    #priceTotal = "{:.2f}".format(total)
+    priceTotal = ""
+    for short in shortRows:
+        if ("Total" in short[0]) and ("Base" not in short[0]):
+            priceTotal += (" + " +short[1])
+    priceTotal = priceTotal.strip(" + ")
     
     # structure embed output
     embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF) #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
     #failover in the event of a footer of length >396 should be to skip rendering the footer and send the embed anyway
     #this behaviour can be changed later
     try:
-        embed.add_field(name="Total:", value=("``"+locale+priceTotal+"``"), inline=False)
+        embed.add_field(name="Total:", value=("``"+priceTotal+"``"), inline=False)
         embed.add_field(name="Estimated Wattage", value=buildWattage, inline=False)
         if len(compatNotes) > 0:
             embed.add_field(name=compatHeader, value=compatNotes, inline=False)
@@ -252,11 +260,12 @@ async def processMessage(message, userMessage, sender):
     try:
         link = getPcppLink(userMessage)
         #soup = pcppSoup(link[0])
-        soup, buttons = pcppSoup(link[0])
-        await message.channel.send(embed=msgHandler(userMessage, sender, soup, link), view=MyView(soup, link, buttons))
+        soup, buttons = pcppSoup(link)
+        await message.channel.send(embed=tableHandler(sender, soup, link), view=MyView(soup, link, buttons))
         #await message.channel.send(embed=msgHandler(userMessage, sender))
     except Exception as error:
         print(error)
+        #raise(error)
     
 if __name__ =='__main__':
     runBot() 
