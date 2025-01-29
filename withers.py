@@ -10,10 +10,12 @@ import os
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 import datetime
 
+
 class MyView(discord.ui.View):
-    def __init__(self, soup, link):
+    def __init__(self, soup, link, buttons):
         '''
         Instantiates a custom view below the embed with the necessary URL buttons for list actions
         inputs:
@@ -22,32 +24,18 @@ class MyView(discord.ui.View):
         '''
         super(MyView, self).__init__()
         self.soup = soup
+        self.buttons = buttons
 
         #style override appears to be non-functional if we use a url
-        openButton = discord.ui.Button(label='Open List', style=discord.ButtonStyle.blurple, url=link[0])
+        openButton = discord.ui.Button(label='Open List', style=discord.ButtonStyle.url, url=link[0])
         self.add_item(openButton)
-        #TODO: make edit and save buttons work properly
-        editButton = discord.ui.Button(label='Edit List', style=discord.ButtonStyle.blurple, url=link[0])
+
+        editButton = discord.ui.Button(label='Edit List', style=discord.ButtonStyle.url, url=self.buttons[0])
         self.add_item(editButton)
-        saveButton = discord.ui.Button(label='Save List', style=discord.ButtonStyle.blurple, url=link[0])
+        
+        saveButton = discord.ui.Button(label='Save List', style=discord.ButtonStyle.url, url=self.buttons[1])
         self.add_item(saveButton)
     
-    #todo: make these buttons do the things on their labels
-    '''
-    @discord.ui.button(label='Open List', style=discord.ButtonStyle.url, url='https://pcpartpicker.com')
-    async def on_button_1_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        #await interaction.response.edit_message(content='Button 1 clicked!')
-        pass
-    @discord.ui.button(label='Edit List', style=discord.ButtonStyle.url, url='https://pcpartpicker.com')
-    async def on_button_2_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        #await interaction.response.edit_message(content='Button 2 clicked!')
-        pass
-    @discord.ui.button(label='Save List', style=discord.ButtonStyle.url, url='https://pcpartpicker.com')
-    async def on_button_3_click(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
-        #await interaction.response.edit_message(content='Button 3 clicked!')
-        pass
-    '''
-
 def runBot():
     # get discord token from .env file for security purposes
     load_dotenv()
@@ -107,7 +95,8 @@ def pcppSoup(link):
     # initialize selenium chrome webdriver with settings
     useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
+    #options.add_argument('--headless')
+    #options.add_argument('--window-size=1920x1080')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
@@ -121,9 +110,13 @@ def pcppSoup(link):
     
     # scrape url with selenium and feed to soup for html parsing
     driver.get(link)
+
     soup = BeautifulSoup(driver.page_source,"html.parser")
 
-    return soup
+    editClick = driver.find_element(By.CLASS_NAME, "actionBox__options--edit")
+    saveClick = driver.find_element(By.CLASS_NAME, "actionBox__options--save").click()
+
+    return (soup, (editClick, saveClick))
 
 def msgHandler(msg, sender, soup, linkTuple):
     '''
@@ -205,7 +198,7 @@ def msgHandler(msg, sender, soup, linkTuple):
             partName = ("[" + partName + "](" + row[4].strip() + ")")
         listLength += len(partName)
 
-        partPrice = row[10][8:]
+        partPrice = row[10][7:]
         try:
             total += float(partPrice)
             if (partPrice == "00"):
@@ -258,8 +251,9 @@ async def processMessage(message, userMessage, sender):
     '''
     try:
         link = getPcppLink(userMessage)
-        soup = pcppSoup(link[0])
-        await message.channel.send(embed=msgHandler(userMessage, sender, soup, link), view=MyView(soup, link))
+        #soup = pcppSoup(link[0])
+        soup, buttons = pcppSoup(link[0])
+        await message.channel.send(embed=msgHandler(userMessage, sender, soup, link), view=MyView(soup, link, buttons))
         #await message.channel.send(embed=msgHandler(userMessage, sender))
     except Exception as error:
         print(error)
