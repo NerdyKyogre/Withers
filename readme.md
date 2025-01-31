@@ -19,6 +19,7 @@ Using the bot is incredibly simple. All one must do is provide is provide the bu
 
 
 ## Deploying Yourself 
+Setup hard requirements and setup repo
 - Install and configure ``Python 3.1x``. This is a **hard requirement** (obviously, this is a python bot.)
 - Clone this repo using your method of choice, then enter it:
     ```Sh
