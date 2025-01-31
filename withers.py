@@ -269,7 +269,11 @@ def tableHandler(sender, soup, link):
     for short in shortRows:
         if ("Total" in short[0]) and ("Base" not in short[0]) and ("Purchased" not in short[0]):
             priceTotal += (" + " +short[1])
+        if (len(priceTotal.strip(" + ")) < 1) and ("Total" in short[0]):
+            priceTotal += (" + " +short[1])
     priceTotal = priceTotal.strip(" + ")
+    if len(priceTotal) < 1:
+        priceTotal = "N/A"
     
     # structure embed output
     embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF) #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
