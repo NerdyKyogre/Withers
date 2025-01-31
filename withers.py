@@ -122,19 +122,19 @@ def pcppSoup(link):
     driver.get(link)
 
     elements = driver.find_elements(By.XPATH, '//a[contains(@href,"#view_custom_part")]')
-    elementsCount = 0
     for element in elements:
         try:
+            driver.execute_script("arguments[0].scrollIntoView();", element)
             element.click()
-            elementsCount += 1
         except Exception:
             pass
+    sleep(0.1)
     
-    sleep(0.1 * elementsCount)
     soup = BeautifulSoup(driver.page_source,"html.parser")
 
-    editClick = driver.find_element(By.CLASS_NAME, "actionBox__options--edit")
-    saveClick = driver.find_element(By.CLASS_NAME, "actionBox__options--save")
+    #editClick = driver.find_element(By.CLASS_NAME, "actionBox__options--edit")
+    #saveClick = driver.find_element(By.CLASS_NAME, "actionBox__options--save")
+    editClick, saveClick = (None, None)
 
     return (soup, (editClick, saveClick))
 
@@ -197,7 +197,6 @@ def tableHandler(sender, soup, link):
                         cells.append("https://pcpartpicker.com" + url)
                         cells.append(True)
                     else:
-                        print(cells[3])
                         customPartLink = cells[3]
                         while "\n" in customPartLink:
                             customPartLink = customPartLink[customPartLink.find("\n") + 1:]
@@ -268,7 +267,7 @@ def tableHandler(sender, soup, link):
     #priceTotal = "{:.2f}".format(total)
     priceTotal = ""
     for short in shortRows:
-        if ("Total" in short[0]) and ("Base" not in short[0]):
+        if ("Total" in short[0]) and ("Base" not in short[0]) and ("Purchased" not in short[0]):
             priceTotal += (" + " +short[1])
     priceTotal = priceTotal.strip(" + ")
     
