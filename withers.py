@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import datetime
+from time import sleep
 
 
 class MyView(discord.ui.View):
@@ -32,11 +33,15 @@ class MyView(discord.ui.View):
         openButton = discord.ui.Button(label='Open List', style=discord.ButtonStyle.url, url=self.link)
         self.add_item(openButton)
 
+        #These two buttons will most likely never be implemented, but their template remains for the brave, prophesied pull-request-writer who one day will unearth them and restore them to their deserved glory.
+        #the idea is to execute jquery upon getRequest to call the function in the edit and save buttons, then pass the result forward to the user's browser. 
+        '''
         editButton = discord.ui.Button(label='Edit List', style=discord.ButtonStyle.url, url=self.link)#self.buttons[0])
         self.add_item(editButton)
         
         saveButton = discord.ui.Button(label='Save List', style=discord.ButtonStyle.url, url=self.link)#self.buttons[1])
         self.add_item(saveButton)
+        '''
     
 def runBot():
     # get discord token from .env file for security purposes
@@ -116,6 +121,16 @@ def pcppSoup(link):
     # scrape url with selenium and feed to soup for html parsing
     driver.get(link)
 
+    elements = driver.find_elements(By.XPATH, '//a[contains(@href,"#view_custom_part")]')
+    elementsCount = 0
+    for element in elements:
+        try:
+            element.click()
+            elementsCount += 1
+        except Exception:
+            pass
+    
+    sleep(0.1 * elementsCount)
     soup = BeautifulSoup(driver.page_source,"html.parser")
 
     editClick = driver.find_element(By.CLASS_NAME, "actionBox__options--edit")
@@ -145,13 +160,19 @@ def tableHandler(sender, soup, link):
     table = soup.find('table', class_='xs-col-12')
     
     # scrape and format build wattage
-    buildWattage = (' '.join(soup.find('div', class_='partlist__keyMetric',).text.split()))[-5:]
+    buildWattage = (' '.join(soup.find('div', class_='partlist__keyMetric',).text.split()))
+    wattageSplit = buildWattage.find(":") + 2 
+    buildWattage = buildWattage[wattageSplit:]
     
     # scrape and format compatibility notes
     compatHeader = soup.find('div', class_='subTitle__header').find('h2').text
     compatNotes = ""
     compatTags = soup.find_all('p', {'class':['note__text note__text--info','note__text note__text--warning']})
-    compatTags.pop()
+    try:
+        compatTags.pop()
+    except Exception:
+        compatHeader = "No issues or incompatibilities detected."
+        compatNotes = ""
 
     for note in compatTags:
         note = str(note)
@@ -175,14 +196,24 @@ def tableHandler(sender, soup, link):
                     if (url.find("view_custom_part") < 0):
                         cells.append("https://pcpartpicker.com" + url)
                         cells.append(True)
+                    else:
+                        print(cells[3])
+                        customPartLink = cells[3]
+                        while "\n" in customPartLink:
+                            customPartLink = customPartLink[customPartLink.find("\n") + 1:]
+                        if len(customPartLink) <= 0:
+                            pass
+                        cells.append(customPartLink)
+                        cells.append(True)
 
         if len(cells) > 3:    
             rows.append(cells)
         else:
             shortRows.append(cells)
-
+    
+    #print(rows)
     # initialize total build cost
-    total = 0.00
+    #total = 0.00
 
     # structure partslist output
     componentList = ""
@@ -194,7 +225,7 @@ def tableHandler(sender, soup, link):
         partType = "**" + row[0] + "**"
         listLength += len(partType)
 
-        partName = row[3].replace("\u200b", "")
+        partName = row[3].replace("\u200b", "").strip()
 
         index = partName.find("\n")
         if index >= 0:
@@ -204,11 +235,15 @@ def tableHandler(sender, soup, link):
             partName = ("[" + partName + "](" + row[4].strip() + ")")
         listLength += len(partName)
 
-        partPrice = row[10][6:]
+        partPrice = row[10][5:].strip()
+        if len(partPrice) < 1:
+            partPrice = row[8][5:].strip()
+
         if partPrice == "o Prices Available":
             partPrice = "``N/A``"
         else:
             partPrice = ("``" + partPrice + "``") 
+        
 
         listLength += len(partPrice)
         if (not tooLong) and (listLength > 3700):
@@ -228,7 +263,7 @@ def tableHandler(sender, soup, link):
         componentList += partlist + "\n"
 
     if tooLong:
-        componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " parts were not shown. Please click one of the buttons below to see the full list.*")
+        componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " parts were not shown. Please click the button below to see the full list.*")
 
     #priceTotal = "{:.2f}".format(total)
     priceTotal = ""
