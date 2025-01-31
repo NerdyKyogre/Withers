@@ -168,7 +168,7 @@ def tableHandler(sender, soup, link):
     # scrape and format compatibility notes
     compatHeader = soup.find('div', class_='subTitle__header').find('h2').text
     compatNotes = ""
-    compatTags = soup.find_all('p', {'class':['note__text note__text--info','note__text note__text--warning']})
+    compatTags = soup.find_all('p', {'class':['note__text note__text--info','note__text note__text--warning', 'note__text note__text--problem']})
     try:
         compatTags.pop()
     except Exception:
