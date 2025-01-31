@@ -13,6 +13,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import datetime
 from time import sleep
+import asyncio
 
 
 class MyView(discord.ui.View):
@@ -66,7 +67,7 @@ def runBot():
             return
     client.run(TOKEN)
 
-def getPcppLink(msg):
+async def getPcppLink(msg):
     #curSyms = {"au":"$", "at":"€", "be":"€", "ca":"$", "cz":"Kč", "dk":"kr", "fi":"€", "fr":"€", "de":"€", "hu":"Ft", "ie":"€", "it":"€", "nl":"€", "nz":"$", "no":"kr", "pt":"€", "ro":"RON", "sa":"SR", "sk":"€", "es":"€", "se":"kr", "uk":"£", "us":"$"}
     # find substring of list link
     try:
@@ -101,7 +102,7 @@ def getPcppLink(msg):
     
     return link
 
-def pcppSoup(link):
+async def pcppSoup(link):
     # initialize selenium chrome webdriver with settings
     useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
     options = webdriver.ChromeOptions()
@@ -128,7 +129,7 @@ def pcppSoup(link):
             element.click()
         except Exception:
             pass
-    sleep(0.1)
+    await asyncio.sleep(0.3)
     
     soup = BeautifulSoup(driver.page_source,"html.parser")
 
@@ -262,17 +263,17 @@ def tableHandler(sender, soup, link):
         componentList += partlist + "\n"
 
     if tooLong:
-        componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " parts were not shown. Please click the button below to see the full list.*")
+        componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " part(s) were not shown. Please click the button below to see the full list.*")
 
     #priceTotal = "{:.2f}".format(total)
     priceTotal = ""
     for short in shortRows:
         if ("Total" in short[0]) and ("Base" not in short[0]) and ("Purchased" not in short[0]):
             priceTotal += (" + " +short[1])
-        if (len(priceTotal.strip(" + ")) < 1) and ("Total" in short[0]):
-            priceTotal += (" + " +short[1])
     priceTotal = priceTotal.strip(" + ")
-    if len(priceTotal) < 1:
+    if (len(priceTotal) < 1) and ("Total" in shortRows[0][0]):
+        priceTotal += (" + " +shortRows[0][1]).strip(" + ")
+    elif len(priceTotal) < 1:
         priceTotal = "N/A"
     
     # structure embed output
@@ -296,9 +297,9 @@ async def processMessage(message, userMessage, sender):
     Credit https://www.upwork.com/resources/how-to-make-discord-bot
     '''
     try:
-        link = getPcppLink(userMessage)
+        link = await getPcppLink(userMessage)
         #soup = pcppSoup(link[0])
-        soup, buttons = pcppSoup(link)
+        soup, buttons = await pcppSoup(link)
         await message.channel.send(embed=tableHandler(sender, soup, link), view=MyView(soup, link, buttons))
         #await message.channel.send(embed=msgHandler(userMessage, sender))
     except Exception as error:
