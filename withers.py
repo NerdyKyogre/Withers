@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import datetime
-from time import sleep
 import asyncio
 
 
@@ -203,6 +202,8 @@ def tableHandler(sender, soup, link):
                             customPartLink = customPartLink[customPartLink.find("\n") + 1:]
                         if len(customPartLink) <= 0:
                             pass
+                        if "https://" not in customPartLink: 
+                            continue
                         cells.append(customPartLink)
                         cells.append(True)
 
@@ -235,11 +236,21 @@ def tableHandler(sender, soup, link):
             partName = ("[" + partName + "](" + row[4].strip() + ")")
         listLength += len(partName)
 
+        partPrice = ""
+        for field in row:
+            try:
+                if "Price" in field:
+                    partPrice = field[5:].strip()
+            except Exception:
+                pass
+
+        '''
         partPrice = row[10][5:].strip()
         if len(partPrice) < 1:
             partPrice = row[8][5:].strip()
+        '''
 
-        if partPrice == "o Prices Available":
+        if (partPrice == "No Prices Available") or (partPrice == ""):
             partPrice = "``N/A``"
         else:
             partPrice = ("``" + partPrice + "``") 
