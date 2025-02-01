@@ -1,6 +1,6 @@
 '''
 Withers
-A discord bot that parses PCPartPicker (hereafter PCPP) list links and posts them as a user-readable message, similar to PCPP's in-house Smithers bot
+A discord bot that parses PC build list links and posts them as a user-readable message.
 Authors: @NerdyKyogre and @Spiritfader
 '''
 import discord
@@ -18,7 +18,7 @@ import asyncio
 class MyView(discord.ui.View):
     def __init__(self, soup, link, buttons):
         '''
-        Instantiates a custom view below the embed with the necessary URL buttons for list actions
+        Instantiates a custom view below the embed with the necessary URL button(s) for list actions
         inputs:
         - Soup - beautifulsoup output from the list link
         - link - list url as string
@@ -44,52 +44,64 @@ class MyView(discord.ui.View):
         '''
     
 def runBot():
+    '''
+    Initializes the bot and checks for new messages in all connected channels.
+    Inputs: N/A
+    Returns: N/A
+    '''
     # get discord token from .env file for security purposes
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
+    #initialize a new client instance with the necessary intents - we need the import message content intent for parsing
     client = discord.Client(intents=INTENTS)
     
-    # print to console when we are live and process every message
-    # credit upwork https://www.upwork.com/resources/how-to-make-discord-bot
+    # print to console when we are live, then begin processing messages
     @client.event
     async def on_ready():
         print({client.user}, 'is live')
  
     @client.event
     async def on_message(message):
+        #ignore messages we send
         if message.author == client.user:
             return
-        # only do anything if message contains relevant string
+        # look for relevant part list link in message contents, then process it
         if "pcpartpicker.com/list/" in message.content:
             await processMessage(message, message.content, str(message.author.mention))
         else: 
             return
     client.run(TOKEN)
 
+'''
+NOTE:
+All functions called by RunBot(), i.e. everything below this point MUST be async.
+This is because discord's gateway depends on receiving heartbeat packets at regular intervals, which blocking functions prevent while they are running.
+Having all functions async prevents gateway warnings and makes the bot more resilient to rate limiting/disconnection under heavy load.
+'''
+
 async def getPcppLink(msg):
-    #curSyms = {"au":"$", "at":"€", "be":"€", "ca":"$", "cz":"Kč", "dk":"kr", "fi":"€", "fr":"€", "de":"€", "hu":"Ft", "ie":"€", "it":"€", "nl":"€", "nz":"$", "no":"kr", "pt":"€", "ro":"RON", "sa":"SR", "sk":"€", "es":"€", "se":"kr", "uk":"£", "us":"$"}
-    # find substring of list link
+    '''
+    Finds PCPartPicker link within the contents of a message
+    Inputs:
+        - msg: message content, type string
+    Returns full link as a string.
+    '''
+    # find substring of list link if it exists
     try:
         start = msg.index("pcpartpicker.com/list/")
     except Exception:
         return None
     
     # check for regional PCPP URLs, which are 31 characters long after https:// to USA's 28
-    #commented out sections are for the legacy locale dictionary setup, which is no longer used by msgHandler.
+    # regional url prefixes have a . before pcpartpicker, whereas the base american one has a /. we use this to differentiate them
     if msg[start - 1] == ".":
         start -= 3
         length = 31
-        '''
-        try:
-            locale=curSyms[msg[start:(start + 2)]] 
-        except Exception:
-            locale=""
-        '''
     else: 
         length = 28
-        #locale=curSyms["us"]
 
-    # figure out the actual url
+    # figure out the actual url by looping over characters until we hit the right length
+    # we do this instead of slicing so we can more easily detect invalid/cut off links
     link = "https://"
     for i in range(start, start + length):
         try:
@@ -97,41 +109,52 @@ async def getPcppLink(msg):
         except Exception:
             #return("Invalid PCPP link.", "")
             raise SyntaxError("Invalid PCPP Link")
-            #todo: check for 404 errors in link. may happen in parser?
     
     return link
 
 async def pcppSoup(link):
-    # initialize selenium chrome webdriver with settings
+    '''
+    Multi-purpose function to scrape the PCPartPicker page with Selenium and feed the data table into BeautifulSoup for formatting and parsing.
+    Inputs:
+        - link: Part list link, type string
+    Returns: tuple (soup, (button1, button2)) where:
+        - soup is a BeautifulSoup object containing the table contents
+        - button1 and button2 are clickable element objects that we can interface with using webdriver
+    Note that button1 and button2 are not currently implemented and are None at this time.
+    '''
+
+    # initialize selenium chrome webdriver with necessary settings
+    #custom user agent prevents rate limiting by emulating a real desktop user
     useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--window-size=1920x1080')
     options.add_argument('--no-sandbox')
+    #the below three options improve performance
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
     options.add_argument("--user-agent="+useragent)
     driver = webdriver.Chrome(options=options)
     
-    # print user-agent to console for testing 
-    #driver_ua = driver.execute_script("return navigator.userAgent")
-    #print("User agent in-use: "+driver_ua)
-    
     # scrape url with selenium and feed to soup for html parsing
     driver.get(link)
 
+    #this loop looks for clickable custom part links, scrolls to the correct location, and clicks to open them.
+    #we need to do this because PCPP does not load custom URLs until the button is clicked to view them.
     elements = driver.find_elements(By.XPATH, '//a[contains(@href,"#view_custom_part")]')
     for element in elements:
         try:
             driver.execute_script("arguments[0].scrollIntoView();", element)
             element.click()
+        #custom parts without custom URLs are not clickable - this is expected behaviour
         except Exception:
             pass
-    await asyncio.sleep(0.3)
+    await asyncio.sleep(0.3) #need to wait for the link load function to complete, otherwise we feed "Loading..." into soup
     
     soup = BeautifulSoup(driver.page_source,"html.parser")
 
+    #legacy button functions
     #editClick = driver.find_element(By.CLASS_NAME, "actionBox__options--edit")
     #saveClick = driver.find_element(By.CLASS_NAME, "actionBox__options--save")
     editClick, saveClick = (None, None)
@@ -140,26 +163,23 @@ async def pcppSoup(link):
 
 def tableHandler(sender, soup, link):
     '''
-    Parses data table from PCPP list link
+    Parses data table from PCPP list link into a discord embed
     Inputs: 
-        sender - author of calling message, as string
+        sender - author of calling message, type string
         soup - BeautifulSoup object output from scraper
-        link - part list link, as a string
-    Returns: response message, type string
+        link - part list link, type string
+    Returns: response message, type discord embed object
     '''
+    
+    #site source is temporarily hard coded until we add support for other part comparison systems
+    #in the future we will have separate link and soup functions for each site, and separate tablehandlers for sites that produce sufficiently different output.
+    #at that point this will probably become a parameter
+    siteSource="PCPartPicker"
 
-    siteSource="PCPartPicker" #temporarily hard coded until we add support for other part comparison systems
-    '''
-    try:
-        link, locale = getPCPPLink(msg)
-    except SyntaxError:
-        raise Exception("Failed to parse link. This may be due to an invalid link format.")
-    '''
-
-    # define the table to pull
+    # define the information table to pull based on its class
     table = soup.find('table', class_='xs-col-12')
     
-    # scrape and format build wattage
+    # scrape and format existing build wattage estimate
     buildWattage = (' '.join(soup.find('div', class_='partlist__keyMetric',).text.split()))
     wattageSplit = buildWattage.find(":") + 2 
     buildWattage = buildWattage[wattageSplit:]
@@ -168,151 +188,170 @@ def tableHandler(sender, soup, link):
     compatHeader = soup.find('div', class_='subTitle__header').find('h2').text
     compatNotes = ""
     compatTags = soup.find_all('p', {'class':['note__text note__text--info','note__text note__text--warning', 'note__text note__text--problem']})
+    #Every list that has at least one non-custom internal part contains the same compatibility warning about some measurements not being checked, which we ignore because it's meaningless.
     try:
         compatTags.pop()
-    except Exception:
+    except Exception: #a list composed entirely of custom parts or peripherals won't have this warning
         compatHeader = "No issues or incompatibilities detected."
         compatNotes = ""
-
+    #now format each compatibility note into a list
     for note in compatTags:
         note = str(note)
+        if ("currently not supported" in note):
+            continue
         note = note[note.find("</span>") + 8:-4]
         compatNotes += ("- " + note + "\n") 
     
-    # scrape and format partslist table body
-    rows = []
-    shortRows = []
+    # scrape and format part list table body
+    rows = [] #parts
+    shortRows = [] #non-part rows - we're mainly interested in total price
+    #each part is a tr tag, and each information piece in it is a td tag
     for row in table.find_all('tr')[1:]:  
         cells = []
         for td in row.find_all('td'):
             cells.append(td.text.strip())
-            #grab link
+            #grab link if row is of the appropriate type, and add to info for the part
             tdClass = td.get("class")
             if tdClass is not None and "td__name" in tdClass:
+                #this type will always contain at least one a tag
                 for a in td.find_all('a'):
                     url = str(a)
                     url = url[(url.find("href") + 6):]
                     url = url[:url.find("\">")]
+                    #first, get link the regular way for non-custom parts
+                    #note that auto-added amazon parts also work this way
                     if (url.find("view_custom_part") < 0):
                         cells.append("https://pcpartpicker.com" + url)
+                        #we append True to the next field in any successful link so we can easily check if the field has a link when getting it later
                         cells.append(True)
+                    #for custom parts, the url ends up on its own line at the end of the name field, and may or may not exist
                     else:
                         customPartLink = cells[3]
+                        #find the last newline in the name, then slice and use the remainder
                         while "\n" in customPartLink:
                             customPartLink = customPartLink[customPartLink.find("\n") + 1:]
                         if len(customPartLink) <= 0:
                             pass
+                        #make sure the link is valid, otherwise discord markdown will fail to recognize it
                         if "https://" not in customPartLink: 
                             continue
                         cells.append(customPartLink)
                         cells.append(True)
-
+        #we want parts (long rows) and info (short rows) sorted into their respective arrays
         if len(cells) > 3:    
             rows.append(cells)
         else:
             shortRows.append(cells)
-    
-    #print(rows)
-    # initialize total build cost
-    #total = 0.00
 
-    # structure partslist output
+    # structure part list output
+    #initialize giant string of output
     componentList = ""
+
+    #these variables are needed for handling lists over the ~3700 character limit
     listLength = 0
     tooLong = False
     overCount = 0
 
+    #add a new entry to componentList for each part in the long rows
     for row in rows:
+        #part type e.g. CPU, Memory, Storage, etc is the first field, so we can simply tack it on and bold it
         partType = "**" + row[0] + "**"
+        #we keep track of the character count of the list at various stages - this is used at the bottom of the loop
         listLength += len(partType)
 
+        #next, find the name of the part, and include its hyperlink which we'll format into the name
+        #excessive zero width spaces do nothing but inflate character count, remove them
         partName = row[3].replace("\u200b", "").strip()
-
+        #Some part names begin with a leading newline, remove it
         index = partName.find("\n")
         if index >= 0:
             partName = partName[0:(index + 1)].strip()
-
+        #this is where we check if we found a link earlier and set up the hyperlink
         if row[5] == True:
             partName = ("[" + partName + "](" + row[4].strip() + ")")
         listLength += len(partName)
 
+        #part price will show up in different places depending on the presence of links, parametrics, etc, so we have to search for it
         partPrice = ""
         for field in row:
             try:
                 if "Price" in field:
-                    partPrice = field[5:].strip()
+                    partPrice = field[5:].strip() #if price in field, field strips... iykyk ( ͡° ͜ʖ ͡°)
             except Exception:
                 pass
-
-        '''
-        partPrice = row[10][5:].strip()
-        if len(partPrice) < 1:
-            partPrice = row[8][5:].strip()
-        '''
-
+        
+        #"No Price Available" is cumbersome and blank prices cause discord to make unexpected non-inline code blocks, get rid of both
         if (partPrice == "No Prices Available") or (partPrice == ""):
             partPrice = "``N/A``"
         else:
             partPrice = ("``" + partPrice + "``") 
         
-
         listLength += len(partPrice)
+
+        #check for length, leaving room for the footer sections in the 4096 character limit
         if (not tooLong) and (listLength > 3700):
             tooLong = True
+        #we continue to parse the list as normal regardless of its length so we can count the number of remaining parts
         if tooLong:
             overCount += 1
             continue
-
+        
+        #whack the whole thing into a great big string and stick it on its own line
         partlist = partType + " - " + partPrice + " - " + partName
-        #wrapping disabled for aesthetic testing with links. can be re-enabled by uncommenting below block, but is not compatible with markdown urls being added yet
-        '''
-        if len(partlist) > 74: #83
-            componentList += partlist[0:71].strip() + "...\n" #80
-        if len(partlist) <= 74:
-            componentList += partlist + "\n"
-        '''
         componentList += partlist + "\n"
 
+    #if we went over the character limit, explain ourselves
     if tooLong:
         componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " part(s) were not shown. Please click the button below to see the full list.*")
 
-    #priceTotal = "{:.2f}".format(total)
+    #find the grand Total row in shortRows, ignoring all secondary totals as well as shipping/tax/promo under normal circumstances
     priceTotal = ""
     for short in shortRows:
+        #this ugly if finds just Total, only Total, not any other kind of total
         if ("Total" in short[0]) and ("Base" not in short[0]) and ("Purchased" not in short[0]):
-            priceTotal += (" + " +short[1])
+            #we add the + in case we have to parse multiple currencies in the same list, then strip leading + for obvious reasons
+            priceTotal += (" + " +short[1]) 
     priceTotal = priceTotal.strip(" + ")
+    #if the entire list is purchased there's no grand Total so we find the purchased Total which will always be the only field
     if (len(priceTotal) < 1) and ("Total" in shortRows[0][0]):
-        priceTotal += (" + " +shortRows[0][1]).strip(" + ")
+        priceTotal += (" + " +shortRows[0][1]).strip(" + ") #i don't know why i need to concatenate + strip but it does screwy shit if i don't
+    #only give up if there is truly no total (avoids triggering discrete code block)
     elif len(priceTotal) < 1:
         priceTotal = "N/A"
     
     # structure embed output
-    embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF) #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
-    #failover in the event of a footer of length >396 should be to skip rendering the footer and send the embed anyway
-    #this behaviour can be changed later
+    #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
+    embed = discord.Embed(title=siteSource+"\n"+link, description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF) 
     try:
         embed.add_field(name="Total:", value=("``"+priceTotal+"``"), inline=False)
         embed.add_field(name="Estimated Wattage", value=buildWattage, inline=False)
+        #only bother displaying compatibility notes if something is detected
         if len(compatNotes) > 0:
             embed.add_field(name=compatHeader, value=compatNotes, inline=False)
         embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+    #failover in the event of a footer of length >396 should be to skip rendering the footer and send the embed anyway
     except Exception:
         pass
-
+    
     return(embed)
     
 async def processMessage(message, userMessage, sender):
     '''
-    Sends messages between the user and the bot
-    Credit https://www.upwork.com/resources/how-to-make-discord-bot
+    Takes user message and handles it, outputting a response message from the bot
+    Inputs: 
+        - message: discord message object
+        - userMessage: message contents
+        - sender: user profile that sent the message
+    Returns: N/A
     '''
     try:
+        #grab the link
         link = await getPcppLink(userMessage)
-        #soup = pcppSoup(link[0])
+        #scrape it
         soup, buttons = await pcppSoup(link)
+        #handle it, embedding the results and adding a View to store the button(s).
         await message.channel.send(embed=tableHandler(sender, soup, link), view=MyView(soup, link, buttons))
-        #await message.channel.send(embed=msgHandler(userMessage, sender))
+    #any exception encountered while parsing the list should result in the bot refusing to reply and continuing to look for new messages
     except Exception as error:
         print(error)
         #raise(error)

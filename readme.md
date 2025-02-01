@@ -7,18 +7,19 @@
 
 
 ## What is this?
-Withers is a discord bot written in python for the purpose of parsing PCPartPicker (and eventually other) build lists automatically posting them in an organized manner. This facilitates a more fluid and efficient approach to helping people craft the build of their dreams.
+Withers is a discord bot written in Python for the purpose of parsing PCPartPicker (and eventually other) build lists and automatically posting them in an organized manner. This facilitates a more fluid and efficient approach to helping people craft the build of their dreams.
 
 
 ## Usage
 
-Using the bot is incredibly simple. All one must do is provide is provide the build list url in the channel as they would normally do. The bot will automatically parse and post the organized contents of the list immediately to the same channel the list was originally posted in. 
+Using the bot is incredibly simple. All one must do is provide the build list url in the channel as they would normally do. The bot will automatically parse and post the organized contents of the list immediately to the same channel the list was originally posted in. 
 
 <p align=center> <img src="examples/example-1.png?raw=true" alt="Withers output example" style="max-width:100%;max-height:100%;"/>
 
 
 ## Deploying Yourself 
-Assuming you know how to setup a discord bot account and already have please continue. Otherwise go to the [Discord Dev Portal](https://discord.com/developers/docs/quick-start/getting-started) and RTFM from Step 1.
+We assume you know how to setup a discord bot account and have already done so. If not, go to the [Discord Dev Portal](https://discord.com/developers/docs/quick-start/getting-started) and RTFM from Step 1.
+Once you have that account:
 
 - Install and configure ``Python 3.11`` or higher. This is a **hard requirement** (obviously, this is a python bot.)
 - Clone this repo using your method of choice, then enter it:
@@ -58,6 +59,8 @@ Now you can interact with python regularly, with the newly created venv as the s
 - You can obtain your 72-character token in the Bot tab of your Discord app's dashboard.
 
     <p align=center> <img src="examples/app-dashboard.png?raw=true" alt="Withers output example" style="max-width:100%;max-height:100%;"/>
+
+- While you're in this tab, scroll down and enable the Message Content gateway intent - the bot depends on this to be able to read messages.
 
 - Finally, run the bot
     ```Sh
