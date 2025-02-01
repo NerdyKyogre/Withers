@@ -8,6 +8,10 @@
 
 ## What is this?
 Withers is a discord bot written in Python for the purpose of parsing PCPartPicker (and eventually other) build lists and automatically posting them in an organized manner. This facilitates a more fluid and efficient approach to helping people craft the build of their dreams.
+<br>
+
+If you would like to try the bot and partake in our lovely community of PC enthusiasts, or simply inquire about your own build, feel free to join [The Official Tech™ Discord Server](https://discord.gg/fGNSuWzNHG)!
+
 
 
 ## Usage
