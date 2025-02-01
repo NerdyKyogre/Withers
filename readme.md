@@ -20,7 +20,7 @@ Using the bot is incredibly simple. All one must do is provide is provide the bu
 ## Deploying Yourself 
 Assuming you know how to setup a discord bot account and already have please continue. Otherwise go to the [Discord Dev Portal](https://discord.com/developers/docs/quick-start/getting-started) and RTFM from Step 1.
 
-- Install and configure ``Python 3.1x``. This is a **hard requirement** (obviously, this is a python bot.)
+- Install and configure ``Python 3.11`` or higher. This is a **hard requirement** (obviously, this is a python bot.)
 - Clone this repo using your method of choice, then enter it:
     ```Sh
     git clone https://github.com/NerdyKyogre/Withers
@@ -41,11 +41,25 @@ Next, it's ***highly*** recommended to create a venv (virtual python environment
 <br>
 
 Now you can interact with python regularly, with the newly created venv as the source of your python environment.
-- Install the required dependencies from "requirements.txt"
+- Install the required dependencies from ``requirements-3.13.txt`` if you're using ``python 3.13`` or higher 
     ```Sh
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-3.13.txt
     ```
-- Run the bot
+- Otherwise, install the required dependencies from ``requirements-3.12.txt`` if you're using ``python 3.12`` or lower 
+    ```Sh
+    pip install --no-cache-dir -r requirements-3.12.txt
+    ```
+- If necessary, download the chromium driver per the [selenium documentation](https://pypi.org/project/selenium/) or install it from your distribution repository.
+
+- Create a new file called ``.env`` in the base root of the repo. This file should look like the below example;
+    ```Sh
+    DISCORD_TOKEN = [INSERTYOURTOKENHERE]
+    ```
+- You can obtain your 72-character token in the Bot tab of your Discord app's dashboard.
+
+    <p align=center> <img src="examples/app-dashboard.png?raw=true" alt="Withers output example" style="max-width:100%;max-height:100%;"/>
+
+- Finally, run the bot
     ```Sh
     python ./withers.py
     ```
