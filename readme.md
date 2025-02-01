@@ -14,12 +14,12 @@ Withers is a discord bot written in python for the purpose of parsing PCPartPick
 
 Using the bot is incredibly simple. All one must do is provide is provide the build list url in the channel as they would normally do. The bot will automatically parse and post the organized contents of the list immediately to the same channel the list was originally posted in. 
 
-<p align=center> <img src="examples/example-1.png?raw=true" alt="Withers output example" style="width:695px;height:995px"/>
-
+<p align=center> <img src="examples/example-1.png?raw=true" alt="Withers output example" style="max-width:100%;max-height:100%;"/>
 
 
 ## Deploying Yourself 
-Setup hard requirements and setup repo
+Assuming you know how to setup a discord bot account and already have please continue. Otherwise go to the [Discord Dev Portal](https://discord.com/developers/docs/quick-start/getting-started) and RTFM from Step 1.
+
 - Install and configure ``Python 3.1x``. This is a **hard requirement** (obviously, this is a python bot.)
 - Clone this repo using your method of choice, then enter it:
     ```Sh
@@ -36,7 +36,10 @@ Next, it's ***highly*** recommended to create a venv (virtual python environment
     ```Sh
     source ./.withers-venv/bin/activate
     ```
-    <br>
+#### <p align=center>  NO ISSUES WILL BE ENTERTAINED IF ATTEMPTING TO RUN OUTSIDE A VENV. 
+#### <p align=center>  IF YOU DARE, YOU'RE ON YOUR OWN KID
+<br>
+
 Now you can interact with python regularly, with the newly created venv as the source of your python environment.
 - Install the required dependencies from "requirements.txt"
     ```Sh
@@ -46,19 +49,10 @@ Now you can interact with python regularly, with the newly created venv as the s
     ```Sh
     python ./withers.py
     ```
-## <p align=center> That's it, you're good to go!
-<br>
-<br>
-
-### <p align=center> Disclaimer:
-
-### <p align=center> **NO ISSUES WILL BE ENTERTAINED IF ATTEMPTING TO RUN OUTSIDE A VENV**
-<br>
-<br>
+### <p align=center> That's it, you're good to go!
 
 ## Roadmap
 - *TODO:*
-  - Refactor for code efficiency
   - Integrate support for additional PC building site lists
   - Add client side latency/performance/load metrics
   - Implement sharding algorithm for better load balancing
