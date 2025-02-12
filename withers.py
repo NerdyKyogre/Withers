@@ -28,7 +28,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import datetime
 import asyncio
-
+from collections import defaultdict
 
 class MyView(discord.ui.View):
     def __init__(self, soup, link, buttons):
@@ -267,53 +267,61 @@ def tableHandler(sender, soup, link):
     tooLong = False
     overCount = 0
 
-    #add a new entry to componentList for each part in the long rows
+    #track duplicates with a dictionary
+    partCounts = {}
+    uniqueRows = []
+
+    #count occurrences of each unique part
     for row in rows:
-        #part type e.g. CPU, Memory, Storage, etc is the first field, so we can simply tack it on and bold it
+        partKey = (row[0], row[3])  #unique key using part type and part name
+        if partKey in partCounts:
+            partCounts[partKey] += 1
+        else:
+            partCounts[partKey] = 1
+            uniqueRows.append(row)  #store unique rows for final output
+
+    #add new entry to componentList for each unique part
+    for row in uniqueRows:
         partType = "**" + row[0] + "**"
-        #we keep track of the character count of the list at various stages - this is used at the bottom of the loop
         listLength += len(partType)
 
-        #next, find the name of the part, and include its hyperlink which we'll format into the name
-        #excessive zero width spaces do nothing but inflate character count, remove them
         partName = row[3].replace("\u200b", "").strip()
-        #Some part names begin with a leading newline, remove it
         index = partName.find("\n")
         if index >= 0:
             partName = partName[0:(index + 1)].strip()
-        #this is where we check if we found a link earlier and set up the hyperlink
-        if row[5] == True:
-            partName = ("[" + partName + "](" + row[4].strip() + ")")
-        listLength += len(partName)
 
-        #part price will show up in different places depending on the presence of links, parametrics, etc, so we have to search for it
+        if row[5] == True:
+            partName = f"[{partName}]({row[4].strip()})"
+
+        #add (xCOUNTER) if part appears more than once
+        partKey = (row[0], row[3])
+        if partCounts[partKey] > 1:
+            partName += f" **(x{partCounts[partKey]})**"
+
         partPrice = ""
         for field in row:
             try:
                 if "Price" in field:
-                    partPrice = field[5:].strip() #if price in field, field strips... iykyk ( ͡° ͜ʖ ͡°)
+                    partPrice = field[5:].strip()
             except Exception:
                 pass
-        
-        #"No Price Available" is cumbersome and blank prices cause discord to make unexpected non-inline code blocks, get rid of both
+
         if (partPrice == "No Prices Available") or (partPrice == ""):
             partPrice = "``N/A``"
         else:
             partPrice = ("``" + partPrice + "``") 
-        
+
         listLength += len(partPrice)
 
-        #check for length, leaving room for the footer sections in the 4096 character limit
         if (not tooLong) and (listLength > 3700):
             tooLong = True
-        #we continue to parse the list as normal regardless of its length so we can count the number of remaining parts
         if tooLong:
             overCount += 1
             continue
-        
-        #whack the whole thing into a great big string and stick it on its own line
+
         partlist = partType + " - " + partPrice + " - " + partName
         componentList += partlist + "\n"
+
 
     #if we went over the character limit, explain ourselves
     if tooLong:
