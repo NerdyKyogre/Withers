@@ -1,8 +1,23 @@
 '''
-Withers
-A discord bot that parses PC build list links and posts them as a user-readable message.
-Authors: @NerdyKyogre and @Spiritfader
+ Withers -- Discord bot to parse PC build lists
+ 
+ Copyright (C) 2024, 2025 NerdyKyogre
+ Copyright (C) 2024, 2025 spiritfader
+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+
 import discord
 INTENTS = discord.Intents.default()
 INTENTS.message_content = True
