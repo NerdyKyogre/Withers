@@ -75,6 +75,13 @@ Now you can interact with python regularly, with the newly created venv as the s
 ### <p align=center> That's it, you're good to go!
 
 ## Roadmap
+- *What's New:*
+  - Purchased parts are now indicated as purchased
+  - Total field differentiates purchased parts
+  - Identical parts now concatenate into a single line
+
+<br>
+
 - *TODO:*
   - Integrate support for additional PC building site lists
   - Add client side latency/performance/load metrics
