@@ -28,6 +28,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import datetime
 import asyncio
+import re
 
 
 class MyView(discord.ui.View):
@@ -261,6 +262,9 @@ def tableHandler(sender, soup, link):
     # structure part list output
     #initialize giant string of output
     componentList = ""
+    #initialize part dictionary - used for concatenating identical parts
+    #keys are formatted as (type, name, unit price), value is count (int)
+    partList = {}
 
     #these variables are needed for handling lists over the ~3700 character limit
     listLength = 0
@@ -271,8 +275,6 @@ def tableHandler(sender, soup, link):
     for row in rows:
         #part type e.g. CPU, Memory, Storage, etc is the first field, so we can simply tack it on and bold it
         partType = "**" + row[0] + "**"
-        #we keep track of the character count of the list at various stages - this is used at the bottom of the loop
-        listLength += len(partType)
 
         #next, find the name of the part, and include its hyperlink which we'll format into the name
         #excessive zero width spaces do nothing but inflate character count, remove them
@@ -284,7 +286,6 @@ def tableHandler(sender, soup, link):
         #this is where we check if we found a link earlier and set up the hyperlink
         if row[5] == True:
             partName = ("[" + partName + "](" + row[4].strip() + ")")
-        listLength += len(partName)
 
         #part price will show up in different places depending on the presence of links, parametrics, etc, so we have to search for it
         partPrice = ""
@@ -292,6 +293,9 @@ def tableHandler(sender, soup, link):
             try:
                 if "Price" in field:
                     partPrice = field[5:].strip() #if price in field, field strips... iykyk ( ͡° ͜ʖ ͡°)
+                #if the part is purchased, this will always be indicated in the field directly after price
+                if "Purchased" in field:
+                    partPrice = partPrice + " (Purchased)"
             except Exception:
                 pass
         
@@ -301,19 +305,51 @@ def tableHandler(sender, soup, link):
         else:
             partPrice = ("``" + partPrice + "``") 
         
-        listLength += len(partPrice)
+        #partList is keyed based on type, name, and unit price, and the value is the count
+        partKey = (partType, partName, partPrice)
+        #if a part of these attributes exists, count one more
+        if partKey in partList.keys():
+            partList[partKey] += 1
+        #if it doesn't exist, add it
+        else:
+            partList[partKey] = 1
+        
+    #loop over rows to add to final string
+    for partKey in partList.keys():
+        #set up variables
+        partType = partKey[0]
+        partName = partKey[1]
+        partPrice = partKey[2]
+        count = partList[partKey]
 
-        #check for length, leaving room for the footer sections in the 4096 character limit
+        #if we have multiple of a part, concatenate
+        if count > 1:
+            #attempt to multiply price by count. need to get number from it first
+            unitPrice = re.findall("\d+\.\d+", partPrice)
+            #this length will be zero if the price is n/a
+            if len(unitPrice) > 0:
+                #multiply and replace if possible
+                totalPrice = count * (float(unitPrice[0]))
+                partPrice = partPrice.replace(unitPrice[0], ("%.2f" % totalPrice))
+            
+            #if count > 1, add count in brackets at start of part name
+            partName = ("**("+ str(count) + "x)** " + partName)
+        
+        #whack the whole thing into a great big string
+        partLine = partType + " - " + partPrice + " - " + partName
+
+        #do length check here
+        listLength += len(partLine)
+        #length 3700 leaves room for the footer sections in the 4096 character limit
         if (not tooLong) and (listLength > 3700):
             tooLong = True
         #we continue to parse the list as normal regardless of its length so we can count the number of remaining parts
         if tooLong:
-            overCount += 1
+            overCount += partList[partKey]
             continue
-        
-        #whack the whole thing into a great big string and stick it on its own line
-        partlist = partType + " - " + partPrice + " - " + partName
-        componentList += partlist + "\n"
+
+        #finally add the string to a line in the final string
+        componentList += partLine + "\n"
 
     #if we went over the character limit, explain ourselves
     if tooLong:
@@ -321,17 +357,35 @@ def tableHandler(sender, soup, link):
 
     #find the grand Total row in shortRows, ignoring all secondary totals as well as shipping/tax/promo under normal circumstances
     priceTotal = ""
+    purchasedParts = False
     for short in shortRows:
         #this ugly if finds just Total, only Total, not any other kind of total
         if ("Total" in short[0]) and ("Base" not in short[0]) and ("Purchased" not in short[0]):
             #we add the + in case we have to parse multiple currencies in the same list, then strip leading + for obvious reasons
             priceTotal += (" + " +short[1]) 
+        if ("Purchased" in short[0]):
+            purchasedParts = True
+
     priceTotal = priceTotal.strip(" + ")
-    #if the entire list is purchased there's no grand Total so we find the purchased Total which will always be the only field
-    if (len(priceTotal) < 1) and ("Total" in shortRows[0][0]):
-        priceTotal += (" + " +shortRows[0][1]).strip(" + ") #i don't know why i need to concatenate + strip but it does screwy shit if i don't
+
+    if purchasedParts and (len(priceTotal) > 1):
+        priceTotal += (" (")
+        for short in shortRows:
+            if ("Purchased" in short[0]):
+                indicator = short[0].replace("Total (", "")
+                indicator = indicator.replace("):", "")
+                priceTotal += (short[1] + " " + indicator + ", ")
+        
+        priceTotal = priceTotal.strip(", ")
+        priceTotal += ")"
+
+    elif purchasedParts:
+        for short in shortRows:
+            if ("Purchased" in short[0]):
+                priceTotal += (short[1] + " (Purchased)")
+    
     #only give up if there is truly no total (avoids triggering discrete code block)
-    elif len(priceTotal) < 1:
+    if len(priceTotal) < 1:
         priceTotal = "N/A"
     
     # structure embed output
