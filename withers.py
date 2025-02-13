@@ -368,8 +368,11 @@ def tableHandler(sender, soup, link):
 
     priceTotal = priceTotal.strip(" + ")
 
+    #if we have a mix of purchased and non-purchased parts
     if purchasedParts and (len(priceTotal) > 1):
+        #put rest of totals in parentheses
         priceTotal += (" (")
+        #find "purchased" and "not yet purchased" fields and add them as above
         for short in shortRows:
             if ("Purchased" in short[0]):
                 indicator = short[0].replace("Total (", "")
@@ -379,6 +382,8 @@ def tableHandler(sender, soup, link):
         priceTotal = priceTotal.strip(", ")
         priceTotal += ")"
 
+    #this case only triggers if the entire list is purchased
+    #find it, and assume purchased
     elif purchasedParts:
         for short in shortRows:
             if ("Purchased" in short[0]):
