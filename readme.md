@@ -77,6 +77,7 @@ Now you can interact with python regularly, with the newly created venv as the s
 ## Roadmap
 - *What's New:*
   - Purchased parts are now indicated as purchased
+  - Parametric filters are now indicated with a *
   - Total field differentiates purchased parts
   - Identical parts now concatenate into a single line
 

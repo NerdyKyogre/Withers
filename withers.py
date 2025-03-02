@@ -270,6 +270,7 @@ def tableHandler(sender, soup, link):
     listLength = 0
     tooLong = False
     overCount = 0
+    paramGlobal = False
 
     #add a new entry to componentList for each part in the long rows
     for row in rows:
@@ -279,6 +280,11 @@ def tableHandler(sender, soup, link):
         #next, find the name of the part, and include its hyperlink which we'll format into the name
         #excessive zero width spaces do nothing but inflate character count, remove them
         partName = row[3].replace("\u200b", "").strip()
+        #check for parametric BEFORE stripping it off of partName
+        parametric = False
+        if partName.find("parametric") >= 0:
+            parametric = True
+            paramGlobal = True #setting this value is quicker than checking it and then setting it
         #Some part names begin with a leading newline, remove it
         index = partName.find("\n")
         if index >= 0:
@@ -286,6 +292,9 @@ def tableHandler(sender, soup, link):
         #this is where we check if we found a link earlier and set up the hyperlink
         if row[5] == True:
             partName = ("[" + partName + "](" + row[4].strip() + ")")
+        #if we detected a parametric filter for this part, add an asterisk
+        if parametric:
+            partName = partName + "**\***"
 
         #part price will show up in different places depending on the presence of links, parametrics, etc, so we have to search for it
         partPrice = ""
@@ -350,6 +359,10 @@ def tableHandler(sender, soup, link):
 
         #finally add the string to a line in the final string
         componentList += partLine + "\n"
+
+    #if we had at least one parametric part, indicate as such
+    if paramGlobal:
+        componentList += ("\n*\* Indicates a part selected by a parametric filter. Please open the full list for more information.*\n")
 
     #if we went over the character limit, explain ourselves
     if tooLong:
