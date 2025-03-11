@@ -49,7 +49,7 @@ def runBot():
         if message.author == client.user:
             return
         # look for relevant part list link in message contents, then process it
-        if "pcpartpicker.com/list/" in message.content:
+        if ("pcpartpicker.com/list/" in message.content) or ("pcpartpicker.com/b/" in message.content) or ("pcpartpicker.com/user/" in message.content):
             rqMsg = pcpp.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg)
         else: 
@@ -64,23 +64,22 @@ async def processMessage(message, rqMsg):
     Returns: N/A
     '''
     try:
+        #start webdriver instance for this message
+        driver = await soul.startWebDriver()
         #first, find all the links
-        await rqMsg.findLinks()
+        await rqMsg.findLinks(driver)
         #handle a message for each link in the list
-        #python is stupid about length 1 arrays so we need a carevout for that
         lists = await rqMsg.generateLists()
-        if len(lists) == 1:
-            buildList = lists[0]
-            #scrape this link
-            await buildList.generateSoup()
-            #embed the results and add a View to store the button(s).
-            await message.channel.send(embed=(await buildList.buildTable(await rqMsg.getSender())), view=soul.Buttons(await buildList.getSoup(), await buildList.getLink(), await buildList.getButtons()))
+        if len(lists) == 0:
+            pass
         else:
             for buildList in lists:
                 #scrape this link
-                await buildList.generateSoup()
+                await buildList.generateSoup(driver)
                 #embed the results and add a View to store the button(s).
                 await message.channel.send(embed=(await buildList.buildTable(await rqMsg.getSender())), view=soul.Buttons(await buildList.getSoup(), await buildList.getLink(), await buildList.getButtons()))
+        
+        driver.quit()
     #any exception encountered while parsing the list should result in the bot refusing to reply and continuing to look for new messages
     except Exception as error:
         print(error)

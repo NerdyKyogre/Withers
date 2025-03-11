@@ -16,16 +16,148 @@ class Msg(soul.BuildListMsg):
     
     def __init__(self, msg, msgText, sender):
         super().__init__(msg, msgText, sender)
+        self.priv = False #indicator to determine whether a list is private
 
-    async def findLinks(self, text=None):
+    async def findLinks(self, driver):
         '''
         Finds PCPartPicker link within the contents of a message
-        Inputs: N/A
-        Returns full link as a string.
+        Inputs: 
+            - driver: selenium webdriver instance
+        Returns array of links as strings
         '''
-        #check for default state
-        if text is None:
-            text = self.msgText
+        #convert saved part lists and completed builds into regular list links in the message
+        await self.buildsToLists(driver)
+        #strip out all #view= in the message to convert view links into saved lists
+        self.msgText = self.msgText.replace("#view=", "")
+        await self.savedToLists(driver)
+
+        #add list links to table
+        await self.linksToLists(self.msgText)
+
+        #if we found empty lists or privated saved lists, handle them here
+        #check for empty link
+        if ("pcpartpicker.com/list " in self.msgText) or ("pcpartpicker.com/list/ " in self.msgText):
+            print("empty")
+            pass
+        #check for priv
+        if (self.priv):
+            print(self.priv)
+            pass
+
+        return
+        
+    async def generateLists(self):
+        '''
+        Loops over every link found in the message and creates a new list object for it, returning them all
+        Inputs: N/A
+        Returns: Array of BuildList objects
+        '''
+        lists = []
+        for link in self.links:
+            lists.append(List(link))
+        return lists
+    
+    async def buildsToLists(self, driver):
+        '''
+        Recursively finds all completed build links in the message and replaces them with the corresponding list link
+        Inputs:
+            - driver: selenium webdriver instance
+        Returns: N/A, but updates self.msgText with the new link values
+        '''
+        # find substring of build link if it exists
+        try:
+            start = self.msgText.index("pcpartpicker.com/b/")
+        except Exception:
+            return
+        
+        # check for regional PCPP URLs, which are 31 characters long after https:// to USA's 28
+        # regional url prefixes have a . before pcpartpicker, whereas the base american one has a /. we use this to differentiate them
+        if self.msgText[start - 1] == ".":
+            start -= 3
+            length = 28
+        else: 
+            length = 25
+        
+        # figure out the actual url by looping over characters until we hit the right length
+        # we do this instead of slicing so we can more easily detect invalid/cut off links
+        link = "https://"
+        for i in range(start, start + length):
+            try:
+                link += self.msgText[i] 
+            except Exception:
+                return
+            
+        #now we can load the url into webdriver and look for the part list link
+        driver.get(link)
+        #we don't need to do anything special with driver, so just soup it
+        bSoup = BeautifulSoup(driver.page_source,"html.parser")
+        #grab all the a tags with destinations, and search for one of the format "/list/XXXXXX"
+        aTags = bSoup.find_all('a', href=True)
+        for tag in aTags:
+            href = tag['href']
+            if (href.find("/list/") == 0) and (len(href) > 6): #specify length to avoid taking us to an empty /list/
+                partsLink = ("https://pcpartpicker.com" + href)
+
+        #now that we have the link, replace it in msgText
+        self.msgText = self.msgText.replace(link, partsLink)
+
+        #recurse in case there are more builds to find
+        await self.buildsToLists(driver)
+        return
+    
+    async def savedToLists(self, driver):
+        '''
+        Recursively finds all saved part list links in the message and replaces them with the corresponding list link
+        Inputs:
+            - driver: selenium webdriver instance
+        Returns: N/A, but updates self.msgText with the new link values
+        '''
+        # find substring of list link if it exists
+        try:
+            start = self.msgText.index("pcpartpicker.com/user/")
+            #make sure we go to a saved link and NOT a user page - assigning this will throw an exception if it fails
+            finish = (self.msgText.index("/saved/") + 13)
+        except Exception:
+            return
+        #check for regional urls
+        if self.msgText[start - 1] == ".":
+            start -= 3
+        #skip checking for malformed links here as this is too difficult considering the variable length of the username field
+        link = ("https://" + self.msgText[start:finish])
+
+        #load the page into webdriver - we need to navigate to the edit part list button
+        driver.get(link)
+        #wrap this in a try-catch because find_element will error if the list is private or malformed - we want to handle that
+        try:
+            editButton = driver.find_element(By.XPATH, '//a[contains(@class,"actionBox__options--edit")]')
+            editButton.click()
+            #driver.implicitly_wait(3) #need this to check for page to fully load before we find the link
+            await asyncio.sleep(4)
+            #copyField = driver.find_element(By.XPATH, '//a[contains(@class,"actionBox__permalink--copy tooltip")]') #wait for relevant field to load
+            
+            #make it into a soup and find the link
+            sSoup = BeautifulSoup(driver.page_source,"html.parser")
+            #get all text input fields, and look for the one with the link in its value
+            partsLink = sSoup.find("input", class_="text-input", type="text")['value']
+        except Exception as error:
+            self.priv = True
+            partsLink = ""
+
+        #now that we have the link, replace it in msgText
+        self.msgText = self.msgText.replace(link, partsLink)
+        
+        #recurse in case there are more saved lists to find
+        await self.savedToLists(driver)
+        return
+
+
+    async def linksToLists(self, text):
+        '''
+        Recursively finds all PCPP list links in the message and adds them to the list of links
+        Inputs: 
+            - text: the message or message segment to look for a link in
+        Returns: N/A
+        '''
         # find substring of list link if it exists
         try:
             start = text.index("pcpartpicker.com/list/")
@@ -47,23 +179,11 @@ class Msg(soul.BuildListMsg):
             try:
                 link += text[i] 
             except Exception:
-                #return("Invalid PCPP link.", "")
-                raise SyntaxError("Invalid PCPP Link")
+                return
         
         self.links.append(link)
-        await self.findLinks(text.replace(link, "")) #recurse on the remaining links in the message
+        await self.linksToLists(text.replace(link, "")) #recurse on the remaining links in the message
         return
-    
-    async def generateLists(self):
-        '''
-        Loops over every link found in the message and creates a new list object for it, returning them all
-        Inputs: N/A
-        Returns: Array of BuildList objects
-        '''
-        lists = []
-        for link in self.links:
-            lists.append(List(link))
-        return lists
 
 class List(soul.BuildList):
 
@@ -71,27 +191,14 @@ class List(soul.BuildList):
         super().__init__(link)
         self.siteSource = "PCPartPicker"
 
-    async def generateSoup(self):
+    async def generateSoup(self, driver):
         '''
         Multi-purpose function to scrape the PCPartPicker page with Selenium and feed the data table into BeautifulSoup for formatting and parsing.
         Sets self.soup to this object when complete
-        Inputs: N/A
+        Inputs:
+            - driver: selenium webdriver object
         Returns: N/A
         '''
-
-        # initialize selenium chrome webdriver with necessary settings
-        #custom user agent prevents rate limiting by emulating a real desktop user
-        useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument('--window-size=1920x1080')
-        options.add_argument('--no-sandbox')
-        #the below three options improve performance
-        options.add_argument('--disable-gpu')
-        options.add_argument('--disable-extensions')
-        options.add_argument('--dns-prefetch-disable')
-        options.add_argument("--user-agent="+useragent)
-        driver = webdriver.Chrome(options=options)
         
         # scrape url with selenium and feed to soup for html parsing
         driver.get(self.link)

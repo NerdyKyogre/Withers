@@ -4,10 +4,11 @@ This file contains templates for useful classes for the bot, such as buttons
 It also contains superclass definitions for site-specific classes, such as messages and lists.
 '''
 import discord
+from selenium import webdriver
 
 '''
 NOTE:
-All functions apart from RunBot(), INCLUDING ALL CLASS METHODS AND THEIR DESCENDANTS, MUST be async.
+All functions apart from RunBot() and constructors, INCLUDING ALL OTHER CLASS METHODS AND THEIR DESCENDANTS, MUST be async.
 This is because discord's gateway depends on receiving heartbeat packets at regular intervals, which blocking functions prevent while they are running.
 Having all functions async prevents gateway warnings and makes the bot more resilient to rate limiting/disconnection under heavy load.
 '''
@@ -62,7 +63,6 @@ class BuildListMsg:
         self.msgText = msgText
         self.sender = sender
         self.soup = None #implemented at call time
-        self.siteSource = "Unknown"
 
         self.links = [] #call findLinks later
 
@@ -72,7 +72,7 @@ class BuildListMsg:
     async def getMsg(self):
         return self.msg
     
-    async def getMsgTest(self):
+    async def getMsgText(self):
         return self.msgText
     
     async def getSender(self):
@@ -86,8 +86,15 @@ class BuildListMsg:
         Finds links for the specific list type within the message
         Inputs: N/A
         Returns: N/A, but sets self.links[] to contain the links
+
+        This function MUST follow the following implementation format:
+        lists = []
+        for link in self.links:
+            lists.append(List(link))
+        return lists
+        This is not a global function because the List type definition is dependent on the site module.
         '''
-        raise NotImplementedError("This method should be implemented by the site-specific subclass, but we couldn't find it.")
+        raise NotImplementedError("This method should be implemented by the site-specific subclass, but we couldn't find it. Check soul.py for the specification.")
     
     async def generateLists(self):
         '''
@@ -145,3 +152,26 @@ class BuildList:
         '''
         raise NotImplementedError("This method should be implemented by the site-specific subclass, but we couldn't find it.")
         
+
+async def startWebDriver():
+    '''
+    Initializes a Chrome Webdriver instance and returns it
+    Inputs: N/A
+    Returns: Selenium Webdriver object
+    This function should be called once for every message we handle
+    '''
+    # initialize selenium chrome webdriver with necessary settings
+    #custom user agent prevents rate limiting by emulating a real desktop user
+    useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
+    options.add_argument('--window-size=1920x1080')
+    options.add_argument('--no-sandbox')
+    #the below three options improve performance
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--dns-prefetch-disable')
+    options.add_argument("--user-agent="+useragent)
+    driver = webdriver.Chrome(options=options)
+
+    return driver
