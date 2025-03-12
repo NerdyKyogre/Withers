@@ -84,7 +84,15 @@ Now you can interact with python regularly, with the newly created venv as the s
 ### <p align=center> That's it, you're good to go!
 
 ## Roadmap
-- *What's New:* <br>
+- *What's New:* 
+    <br>
+    <br>
+    **v2.0.1**
+    - Fixed a bug that caused completed builds to revert to american links while parsing
+    - Improved invalid link detection
+    - Added country flag indicator to PCPP lists
+    <br>
+
     **v2.0.0**
     - We recently restructured the code to be more modular and more powerful - this should improve performance as well as making it easier for us to add new features and more retailers.
     - Fixed a bug that could cause the bot to crash or hang after running for long periods of time

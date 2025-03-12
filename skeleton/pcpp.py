@@ -35,6 +35,11 @@ class Msg(soul.BuildListMsg):
         await self.linksToLists(self.msgText)
 
         #if we found empty lists or privated saved lists, handle them here
+        #check for blank list link
+        if ("pcpartpicker.com/list/sF8TwP" in self.msgText):
+            self.msgText = self.msgText.replace("pcpartpicker.com/list/sF8TwP", " ")
+            await self.noPartsEmbed()
+        
         #check for empty link
         self.msgText = (self.msgText + " ")
         if ("pcpartpicker.com/list " in self.msgText) or ("pcpartpicker.com/list/ " in self.msgText):
@@ -73,9 +78,11 @@ class Msg(soul.BuildListMsg):
         
         # check for regional PCPP URLs, which are 31 characters long after https:// to USA's 28
         # regional url prefixes have a . before pcpartpicker, whereas the base american one has a /. we use this to differentiate them
+        country = "" #we need to store the country code in order to get the correct locale for the list link
         if self.msgText[start - 1] == ".":
             start -= 3
             length = 28
+            country = self.msgText[start:(start + 3)]
         else: 
             length = 25
         
@@ -97,7 +104,7 @@ class Msg(soul.BuildListMsg):
             for tag in aTags:
                 href = tag['href']
                 if (href.find("/list/") == 0) and (len(href) > 6): #specify length to avoid taking us to an empty /list/
-                    partsLink = ("https://pcpartpicker.com" + href)
+                    partsLink = ("https://" + country + "pcpartpicker.com" + href)
         except Exception: #if we can't load the page or we can't find the button, error
             self.priv = True
             partsLink = ""
@@ -221,6 +228,21 @@ class Msg(soul.BuildListMsg):
         embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         await self.msg.channel.send(file=file, embed=embed)
 
+    async def noPartsEmbed(self):
+        '''
+        Creates and sends an embedded message in the event that we detect the link to the empty PCPP list
+        Inputs: N/A
+        Returns: N/A
+        '''
+        #set up embed
+        embed = discord.Embed(title="PCPartIgnorer", description=("Sent by " + self.sender + "\n"), color=0xE8EB34)
+        embed.add_field(name="", value="You forgot to put parts in your part list!\n\nNow I don't have a job to do... :cry:")
+        #upload the image
+        file = discord.File("./assets/empty_list.jpeg", filename="empty_list.jpeg")
+        embed.set_image(url="attachment://empty_list.jpeg")
+        #timestamp for better legibility
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+        await self.msg.channel.send(file=file, embed=embed)
 
 class List(soul.BuildList):
 
@@ -269,72 +291,76 @@ class List(soul.BuildList):
         Returns: response message, type discord embed object
         '''
 
-        # define the information table to pull based on its class
-        table = self.soup.find('table', class_='xs-col-12')
-        
-        # scrape and format existing build wattage estimate
-        buildWattage = (' '.join(self.soup.find('div', class_='partlist__keyMetric',).text.split()))
-        wattageSplit = buildWattage.find(":") + 2 
-        buildWattage = buildWattage[wattageSplit:]
-        
-        # scrape and format compatibility notes
-        compatHeader = self.soup.find('div', class_='subTitle__header').find('h2').text
-        compatNotes = ""
-        compatTags = self.soup.find_all('p', {'class':['note__text note__text--info','note__text note__text--warning', 'note__text note__text--problem']})
-        #Every list that has at least one non-custom internal part contains the same compatibility warning about some measurements not being checked, which we ignore because it's meaningless.
+        #wrap this logic in try-catch to make sure list is real
         try:
-            compatTags.pop()
-        except Exception: #a list composed entirely of custom parts or peripherals won't have this warning
-            compatHeader = "No issues or incompatibilities detected."
+            # define the information table to pull based on its class
+            table = self.soup.find('table', class_='xs-col-12')
+            
+            # scrape and format existing build wattage estimate
+            buildWattage = (' '.join(self.soup.find('div', class_='partlist__keyMetric',).text.split()))
+            wattageSplit = buildWattage.find(":") + 2 
+            buildWattage = buildWattage[wattageSplit:]
+            
+            # scrape and format compatibility notes
+            compatHeader = self.soup.find('div', class_='subTitle__header').find('h2').text
             compatNotes = ""
-        #now format each compatibility note into a list
-        for note in compatTags:
-            note = str(note)
-            if ("currently not supported" in note):
-                continue
-            note = note[note.find("</span>") + 8:-4]
-            compatNotes += ("- " + note + "\n") 
-        
-        # scrape and format part list table body
-        rows = [] #parts
-        shortRows = [] #non-part rows - we're mainly interested in total price
-        #each part is a tr tag, and each information piece in it is a td tag
-        for row in table.find_all('tr')[1:]:  
-            cells = []
-            for td in row.find_all('td'):
-                cells.append(td.text.strip())
-                #grab link if row is of the appropriate type, and add to info for the part
-                tdClass = td.get("class")
-                if tdClass is not None and "td__name" in tdClass:
-                    #this type will always contain at least one a tag
-                    for a in td.find_all('a'):
-                        url = str(a)
-                        url = url[(url.find("href") + 6):]
-                        url = url[:url.find("\">")]
-                        #first, get link the regular way for non-custom parts
-                        #note that auto-added amazon parts also work this way
-                        if (url.find("view_custom_part") < 0):
-                            cells.append("https://pcpartpicker.com" + url)
-                            #we append True to the next field in any successful link so we can easily check if the field has a link when getting it later
-                            cells.append(True)
-                        #for custom parts, the url ends up on its own line at the end of the name field, and may or may not exist
-                        else:
-                            customPartLink = cells[3]
-                            #find the last newline in the name, then slice and use the remainder
-                            while "\n" in customPartLink:
-                                customPartLink = customPartLink[customPartLink.find("\n") + 1:]
-                            if len(customPartLink) <= 0:
-                                pass
-                            #make sure the link is valid, otherwise discord markdown will fail to recognize it
-                            if "https://" not in customPartLink: 
-                                continue
-                            cells.append(customPartLink)
-                            cells.append(True)
-            #we want parts (long rows) and info (short rows) sorted into their respective arrays
-            if len(cells) > 3:    
-                rows.append(cells)
-            else:
-                shortRows.append(cells)
+            compatTags = self.soup.find_all('p', {'class':['note__text note__text--info','note__text note__text--warning', 'note__text note__text--problem']})
+            #Every list that has at least one non-custom internal part contains the same compatibility warning about some measurements not being checked, which we ignore because it's meaningless.
+            try:
+                compatTags.pop()
+            except Exception: #a list composed entirely of custom parts or peripherals won't have this warning
+                compatHeader = "No issues or incompatibilities detected."
+                compatNotes = ""
+            #now format each compatibility note into a list
+            for note in compatTags:
+                note = str(note)
+                if ("currently not supported" in note):
+                    continue
+                note = note[note.find("</span>") + 8:-4]
+                compatNotes += ("- " + note + "\n") 
+            
+            # scrape and format part list table body
+            rows = [] #parts
+            shortRows = [] #non-part rows - we're mainly interested in total price
+            #each part is a tr tag, and each information piece in it is a td tag
+            for row in table.find_all('tr')[1:]:  
+                cells = []
+                for td in row.find_all('td'):
+                    cells.append(td.text.strip())
+                    #grab link if row is of the appropriate type, and add to info for the part
+                    tdClass = td.get("class")
+                    if tdClass is not None and "td__name" in tdClass:
+                        #this type will always contain at least one a tag
+                        for a in td.find_all('a'):
+                            url = str(a)
+                            url = url[(url.find("href") + 6):]
+                            url = url[:url.find("\">")]
+                            #first, get link the regular way for non-custom parts
+                            #note that auto-added amazon parts also work this way
+                            if (url.find("view_custom_part") < 0):
+                                cells.append("https://pcpartpicker.com" + url)
+                                #we append True to the next field in any successful link so we can easily check if the field has a link when getting it later
+                                cells.append(True)
+                            #for custom parts, the url ends up on its own line at the end of the name field, and may or may not exist
+                            else:
+                                customPartLink = cells[3]
+                                #find the last newline in the name, then slice and use the remainder
+                                while "\n" in customPartLink:
+                                    customPartLink = customPartLink[customPartLink.find("\n") + 1:]
+                                if len(customPartLink) <= 0:
+                                    pass
+                                #make sure the link is valid, otherwise discord markdown will fail to recognize it
+                                if "https://" not in customPartLink: 
+                                    continue
+                                cells.append(customPartLink)
+                                cells.append(True)
+                #we want parts (long rows) and info (short rows) sorted into their respective arrays
+                if len(cells) > 3:    
+                    rows.append(cells)
+                else:
+                    shortRows.append(cells)
+        except Exception:
+            return (await self.badListEmbed(sender))
 
         # structure part list output
         #initialize giant string of output
@@ -484,8 +510,15 @@ class List(soul.BuildList):
             priceTotal = "N/A"
         
         # structure embed output
+        #get country code from link
+        country = "us"
+        if len(self.link) > 36:
+            country = self.link[8:10]
+        #fix issues with discord emoji compat
+        if country == "uk":
+            country = "gb"
         #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
-        embed = discord.Embed(title=self.siteSource+"\n"+self.link, description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF) 
+        embed = discord.Embed(title=(self.siteSource+ " :flag_" + country + ":\n"+self.link), description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF)
         try:
             embed.add_field(name="Total:", value=("``"+priceTotal+"``"), inline=False)
             embed.add_field(name="Estimated Wattage", value=buildWattage, inline=False)
@@ -498,3 +531,16 @@ class List(soul.BuildList):
             pass
         
         return(embed)
+    
+    async def badListEmbed(self, sender):
+        '''
+        Generates an error message to embed in the event of an invalid link
+        Inputs:
+            - sender: sender id, string
+        Returns: discord embed object
+        '''
+        #set up embed
+        embed = discord.Embed(title=("Couldn't read list\n" + self.link), description=("Sent by " + sender + "\n"), color=0xFF0000)
+        embed.add_field(name="", value="I couldn't find a valid parts table in this list link. Please make sure you've copied the link correctly.\n\nIf you're certain the link is correct and this error persists, there may be a bug - check my About Me for support.")
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+        return embed
