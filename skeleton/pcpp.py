@@ -31,15 +31,15 @@ class Msg(soul.BuildListMsg):
         self.msgText = self.msgText.replace("#view=", "")
         await self.savedToLists(driver)
 
-        #add list links to table
-        await self.linksToLists(self.msgText)
-
-        #if we found empty lists or privated saved lists, handle them here
         #check for blank list link
         if ("pcpartpicker.com/list/sF8TwP" in self.msgText):
             self.msgText = self.msgText.replace("pcpartpicker.com/list/sF8TwP", " ")
             await self.noPartsEmbed()
-        
+
+        #add list links to table
+        await self.linksToLists(self.msgText)
+
+        #if we found empty lists or privated saved lists, handle them here
         #check for empty link
         self.msgText = (self.msgText + " ")
         if ("pcpartpicker.com/list " in self.msgText) or ("pcpartpicker.com/list/ " in self.msgText):
