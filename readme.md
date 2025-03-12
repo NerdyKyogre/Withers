@@ -1,6 +1,7 @@
 # <p align=center> Withers
 
 - [What is this?](#what-is-this)
+- [Why Withers?](#why-withers)
 - [Usage](#usage)
 - [Deploying Yourself](#deploying-yourself)
 - [Roadmap](#roadmap)
@@ -14,7 +15,15 @@ If you would like to try the bot and partake in our lovely community of PC enthu
 
 Withers is the official Part List Bot of The Tech™ since 2025.
 
+## Why Withers?
+Withers offers a number of unique features that set it apart from other buildhelp bots.
 
+- It has indicators for parametric filters, duplicate parts, and other helpful extras for making build lists.
+- It links custom part URLs correctly and handles multiple currencies in one list; if you can make the list, Withers can display it!
+- It uses the *full* character limit to show more parts in a single embed.
+- It supports all forms of PCPartPicker lists including saved lists and completed builds.
+- It can detect common mistakes in buildhelp channels and offer guidance on how to fix them, saving your advisors a headache.
+- It's open-source - you can spin up your own instance easily whenever you want!
 
 ## Usage
 
@@ -75,16 +84,26 @@ Now you can interact with python regularly, with the newly created venv as the s
 ### <p align=center> That's it, you're good to go!
 
 ## Roadmap
-- *What's New:*
-  - Purchased parts are now indicated as purchased
-  - Parametric filters are now indicated with a *
-  - Total field differentiates purchased parts
-  - Identical parts now concatenate into a single line
+- *What's New:* <br>
+    **v2.0.0**
+    - We recently restructured the code to be more modular and more powerful - this should improve performance as well as making it easier for us to add new features and more retailers.
+    - Fixed a bug that could cause the bot to crash or hang after running for long periods of time
+    - Added support for PCPartPicker completed builds and saved part lists
+    - The bot now detects invalid or empty PCPartPicker links and sends a warning if it finds them
+    <br> 
+    
+    **v1.1.0**
+    - Purchased parts are now indicated as purchased
+    - Parametric filters are now indicated with a *
+    - Total field differentiates purchased parts
+    - Identical parts now concatenate into a single line
+
 
 <br>
 
-- *TODO:*
-  - Integrate support for additional PC building site lists
+- *What's Next:*<br> 
+
+  - Integrate support for additional PC building site lists (suggestions on sites to add are appreciated!)
   - Add client side latency/performance/load metrics
   - Implement sharding algorithm for better load balancing
   -  *and much, much more planned...*

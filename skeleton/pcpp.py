@@ -36,12 +36,13 @@ class Msg(soul.BuildListMsg):
 
         #if we found empty lists or privated saved lists, handle them here
         #check for empty link
+        self.msgText = (self.msgText + " ")
         if ("pcpartpicker.com/list " in self.msgText) or ("pcpartpicker.com/list/ " in self.msgText):
-            print("empty")
+            await self.blankEmbed()
             pass
         #check for priv
         if (self.priv):
-            print(self.priv)
+            await self.privEmbed()
             pass
 
         return
@@ -86,17 +87,20 @@ class Msg(soul.BuildListMsg):
                 link += self.msgText[i] 
             except Exception:
                 return
-            
-        #now we can load the url into webdriver and look for the part list link
-        driver.get(link)
-        #we don't need to do anything special with driver, so just soup it
-        bSoup = BeautifulSoup(driver.page_source,"html.parser")
-        #grab all the a tags with destinations, and search for one of the format "/list/XXXXXX"
-        aTags = bSoup.find_all('a', href=True)
-        for tag in aTags:
-            href = tag['href']
-            if (href.find("/list/") == 0) and (len(href) > 6): #specify length to avoid taking us to an empty /list/
-                partsLink = ("https://pcpartpicker.com" + href)
+        try:
+            #now we can load the url into webdriver and look for the part list link
+            driver.get(link)
+            #we don't need to do anything special with driver, so just soup it
+            bSoup = BeautifulSoup(driver.page_source,"html.parser")
+            #grab all the a tags with destinations, and search for one of the format "/list/XXXXXX"
+            aTags = bSoup.find_all('a', href=True)
+            for tag in aTags:
+                href = tag['href']
+                if (href.find("/list/") == 0) and (len(href) > 6): #specify length to avoid taking us to an empty /list/
+                    partsLink = ("https://pcpartpicker.com" + href)
+        except Exception: #if we can't load the page or we can't find the button, error
+            self.priv = True
+            partsLink = ""
 
         #now that we have the link, replace it in msgText
         self.msgText = self.msgText.replace(link, partsLink)
@@ -125,15 +129,15 @@ class Msg(soul.BuildListMsg):
         #skip checking for malformed links here as this is too difficult considering the variable length of the username field
         link = ("https://" + self.msgText[start:finish])
 
-        #load the page into webdriver - we need to navigate to the edit part list button
-        driver.get(link)
         #wrap this in a try-catch because find_element will error if the list is private or malformed - we want to handle that
         try:
+            #load the page into webdriver - we need to navigate to the edit part list button
+            driver.get(link)
+
             editButton = driver.find_element(By.XPATH, '//a[contains(@class,"actionBox__options--edit")]')
             editButton.click()
-            #driver.implicitly_wait(3) #need this to check for page to fully load before we find the link
+            #need this to check for page to fully load before we find the link
             await asyncio.sleep(4)
-            #copyField = driver.find_element(By.XPATH, '//a[contains(@class,"actionBox__permalink--copy tooltip")]') #wait for relevant field to load
             
             #make it into a soup and find the link
             sSoup = BeautifulSoup(driver.page_source,"html.parser")
@@ -184,6 +188,39 @@ class Msg(soul.BuildListMsg):
         self.links.append(link)
         await self.linksToLists(text.replace(link, "")) #recurse on the remaining links in the message
         return
+    
+    async def privEmbed(self):
+        '''
+        Creates and sends an embedded message in the event that we detect a private or malformed link
+        Inputs: N/A
+        Returns: N/A
+        '''
+        #set up embed
+        embed = discord.Embed(title="Private or invalid link detected", description=("Sent by " + self.sender + "\n"), color=0xFF0000)
+        embed.add_field(name="", value="I ran into some trouble opening a list you sent.\n\nPlease make sure all the PCPartPicker links in your message are valid, and that any saved part lists are public (\"Private\" checkbox unchecked).")
+        #upload the image
+        file = discord.File("./assets/private_checkbox.png", filename="private_checkbox.png")
+        embed.set_image(url="attachment://private_checkbox.png")
+        #timestamp for better legibility
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+        await self.msg.channel.send(file=file, embed=embed)
+
+    async def blankEmbed(self):
+        '''
+        Creates and sends an embedded message in the event that we detect an empty PCPP link
+        Inputs: N/A
+        Returns: N/A
+        '''
+        #set up embed
+        embed = discord.Embed(title="Empty list detected", description=("Sent by " + self.sender + "\n"), color=0xFF0000)
+        embed.add_field(name="", value="Please make sure to copy the correct link when sending your PCPartPicker list, otherwise I can't read it.\n\nDon't worry, this happens all the time :pensive:")
+        #upload the image
+        file = discord.File("./assets/wrong_link.png", filename="wrong_link.png")
+        embed.set_image(url="attachment://wrong_link.png")
+        #timestamp for better legibility
+        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+        await self.msg.channel.send(file=file, embed=embed)
+
 
 class List(soul.BuildList):
 
