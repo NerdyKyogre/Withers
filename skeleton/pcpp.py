@@ -295,6 +295,19 @@ class List(soul.BuildList):
         try:
             # define the information table to pull based on its class
             table = self.soup.find('table', class_='xs-col-12')
+
+            #set up country - useful for links and embed
+            #get country code from link
+            country = "us"
+            if len(self.link) > 36:
+                country = self.link[8:10]
+            #create link prefix
+            countryPrefix = ""
+            if country != "us":
+                countryPrefix = country + "."
+            #fix issues with discord emoji compat
+            if country == "uk":
+                country = "gb"
             
             # scrape and format existing build wattage estimate
             buildWattage = (' '.join(self.soup.find('div', class_='partlist__keyMetric',).text.split()))
@@ -338,7 +351,7 @@ class List(soul.BuildList):
                             #first, get link the regular way for non-custom parts
                             #note that auto-added amazon parts also work this way
                             if (url.find("view_custom_part") < 0):
-                                cells.append("https://pcpartpicker.com" + url)
+                                cells.append("https://" + countryPrefix + "pcpartpicker.com" + url)
                                 #we append True to the next field in any successful link so we can easily check if the field has a link when getting it later
                                 cells.append(True)
                             #for custom parts, the url ends up on its own line at the end of the name field, and may or may not exist
@@ -510,13 +523,6 @@ class List(soul.BuildList):
             priceTotal = "N/A"
         
         # structure embed output
-        #get country code from link
-        country = "us"
-        if len(self.link) > 36:
-            country = self.link[8:10]
-        #fix issues with discord emoji compat
-        if country == "uk":
-            country = "gb"
         #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
         embed = discord.Embed(title=(self.siteSource+ " :flag_" + country + ":\n"+self.link), description=("Sent by " + sender + "\n\n" + componentList), color=0xFF55FF)
         try:

@@ -77,6 +77,14 @@ Now you can interact with python regularly, with the newly created venv as the s
 
 - While you're in this tab, scroll down and enable the Message Content gateway intent - the bot depends on this to be able to read messages.
 
+- Optionally, you can add another line to the dotenv which will redirect DMs sent to the bot to your own support channel, given by its ID. In this case, your .env file will look something like this:
+    ```Sh
+    DISCORD_TOKEN = [INSERTYOURTOKENHERE]
+    DM_CHANNEL = [INSERTCHANNELID HERE]
+    ```
+
+- You can obtain the ID of a channel by right clicking in your channel list, then clicking "Copy Channel ID". Note that this feature is experimental at this time; it may have bugs, and updates may change its behaviour without warning.
+
 - Finally, run the bot
     ```Sh
     python ./withers.py
@@ -87,6 +95,11 @@ Now you can interact with python regularly, with the newly created venv as the s
 - *What's New:* 
     <br>
     <br>
+    **v2.0.2**
+    - Links to individual parts in PCPP lists now match the country of the full list.
+    - The bot can now recieve DMs in a channel of your choice.
+    <br>
+
     **v2.0.1**
     - Fixed a bug that caused completed builds to revert to american links while parsing
     - Improved invalid link detection

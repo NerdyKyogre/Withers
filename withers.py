@@ -35,6 +35,12 @@ def runBot():
     # get discord token from .env file for security purposes
     load_dotenv()
     TOKEN = os.getenv("DISCORD_TOKEN")
+    # load support channel from .env if it exists
+    try:
+        DM_CHANNEL = int(os.getenv("DM_CHANNEL"))
+    except Exception:
+        DM_CHANNEL = None
+
     #initialize a new client instance with the necessary intents - we need the import message content intent for parsing
     client = discord.Client(intents=INTENTS)
     
@@ -49,9 +55,15 @@ def runBot():
         if message.author == client.user:
             return
         # look for relevant part list link in message contents, then process it
+        #PCPP
         if ("pcpartpicker.com/list/" in message.content) or ("pcpartpicker.com/b/" in message.content) or ("pcpartpicker.com/user/" in message.content):
             rqMsg = pcpp.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg)
+        # if this is a DM, forward it to the support channel
+        if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):
+            # Getting the channel
+            channel = client.get_channel(DM_CHANNEL)
+            await channel.send(embed=(await recieveDM(message)))
         else: 
             return
     client.run(TOKEN)
@@ -84,6 +96,11 @@ async def processMessage(message, rqMsg):
     except Exception as error:
         print(error)
         #raise(error)
+
+async def recieveDM(message):
+    embed = discord.Embed(title=("DM from: " + str(message.author)), description=(""), color=0xFFFFFF)
+    embed.add_field(name="", value=message.content)
+    return embed
 
 if __name__ =='__main__':
     runBot()   
