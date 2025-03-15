@@ -5,6 +5,7 @@ It also contains superclass definitions for site-specific classes, such as messa
 '''
 import discord
 from selenium import webdriver
+from random import choice
 
 '''
 NOTE:
@@ -162,16 +163,22 @@ async def startWebDriver():
     '''
     # initialize selenium chrome webdriver with necessary settings
     #custom user agent prevents rate limiting by emulating a real desktop user
-    useragent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36"
+    useragents = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0."]
     options = webdriver.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--window-size=1920x1080')
     options.add_argument('--no-sandbox')
+    #not specifically going out of our way to tell the site we're a bot helps with rate limiting
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
     #the below three options improve performance
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
-    options.add_argument("--user-agent="+useragent)
+    #pick a random user agent for each driver instance, helps to avoid rate limiting
+    options.add_argument("--user-agent="+choice(useragents))
     driver = webdriver.Chrome(options=options)
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
     return driver
