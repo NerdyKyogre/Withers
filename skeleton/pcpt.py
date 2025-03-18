@@ -6,9 +6,9 @@ import discord
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import datetime
-import asyncio
-import re
 
 import skeleton.soul as soul
 
@@ -73,9 +73,22 @@ class List(soul.BuildList):
             - driver: selenium webdriver object
         Returns: N/A
         '''
+        #set up correct geolocation for pcpt - New Delhi
+        params = {
+            "latitude": 28.6139,
+            "longitude": 77.2088,
+            "accuracy": 100 
+        }
+        driver.execute_cdp_cmd("Page.setGeolocationOverride", params)
         # scrape url with selenium and feed to soup for html parsing
         driver.get(self.link)
-        asyncio.sleep(10)
+        try:
+            element = WebDriverWait(driver, timeout=15, poll_frequency=5).until(
+                EC.presence_of_element_located((By.ID, "shared_build"))
+            )
+        except Exception as e:
+            print(e)
+
         self.soup = BeautifulSoup(driver.page_source,"html.parser")
 
     async def buildTable(self, sender):
@@ -110,7 +123,7 @@ class List(soul.BuildList):
             #grab part name and link
             partNameField = part.find("td", class_="selection").find("a")
             partName = partNameField.get_text().strip()
-            partLink = partNameField["href"].strip()
+            partLink = ("https://pcpricetracker.in" + partNameField["href"].strip())
 
             #format it
             partName = ("[" + partName + "](" + partLink + ")")
@@ -143,7 +156,7 @@ class List(soul.BuildList):
 
         # structure embed output
         #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
-        embed = discord.Embed(title=(self.siteSource + "\n" + self.link), description=("Sent by " + sender + "\n\n" + componentList), color=0x019119)
+        embed = discord.Embed(title=(self.siteSource + ":flag_in:\n" + self.link), description=("Sent by " + sender + "\n\n" + componentList), color=0x019119)
         try:
             embed.add_field(name="Total:", value=("``"+total+"``"), inline=False)
             embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
