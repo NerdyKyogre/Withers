@@ -82,10 +82,11 @@ class BuildListMsg:
     async def getLinks(self):
         return self.links
     
-    async def findLinks(self):
+    async def findLinks(self, driver, text=None):
         '''
         Finds links for the specific list type within the message
-        Inputs: N/A
+        Inputs: 
+            - driver: selenium webdriver object
         Returns: N/A, but sets self.links[] to contain the links
 
         This function MUST follow the following implementation format:
@@ -137,7 +138,7 @@ class BuildList:
     async def getButtons(self):
         return self.buttons
     
-    async def generateSoup(self):
+    async def generateSoup(self, driver):
         '''
         Parses the part list and generates a BeautifulSoup object from it
         Returns: BeautifulSoup object with the relevant table
@@ -177,7 +178,8 @@ async def startWebDriver():
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
     #pick a random user agent for each driver instance, helps to avoid rate limiting
-    options.add_argument("--user-agent="+choice(useragents))
+    #options.add_argument("--user-agent="+choice(useragents))
+    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
     driver = webdriver.Chrome(options=options)
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 

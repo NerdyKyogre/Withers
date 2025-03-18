@@ -1,6 +1,6 @@
 '''
 Withers Bot Site Head - PCPartPicker
-Handles PCPartpicker build list, completed build, and saved list links
+Handles PCPartPicker build list, completed build, and saved list links
 '''
 import discord
 from bs4 import BeautifulSoup
@@ -193,7 +193,7 @@ class Msg(soul.BuildListMsg):
                 return
         
         self.links.append(link)
-        await self.linksToLists(text.replace(link, "")) #recurse on the remaining links in the message
+        await self.linksToLists(text.replace(link[8:], "")) #recurse on the remaining links in the message
         return
     
     async def privEmbed(self):
@@ -546,7 +546,7 @@ class List(soul.BuildList):
         Returns: discord embed object
         '''
         #set up embed
-        embed = discord.Embed(title=("Couldn't read list\n" + self.link), description=("Sent by " + sender + "\n"), color=0xFF0000)
+        embed = discord.Embed(title=("Couldn't read PCPartPicker list\n" + self.link), description=("Sent by " + sender + "\n"), color=0xFF0000)
         embed.add_field(name="", value="I couldn't find a valid parts table in this list link. Please make sure you've copied the link correctly.\n\nIf you're certain the link is correct and this error persists, there may be a bug - check my About Me for support.")
         embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         return embed

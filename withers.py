@@ -59,6 +59,10 @@ def runBot():
         if ("pcpartpicker.com/list/" in message.content) or ("pcpartpicker.com/b/" in message.content) or ("pcpartpicker.com/user/" in message.content):
             rqMsg = pcpp.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg)
+        #PCPT
+        if ("pcpricetracker.in/b/s/" in message.content):
+            rqMsg = pcpt.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg)
         # if this is a DM, forward it to the support channel
         if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):
             # Getting the channel
