@@ -5,6 +5,8 @@ It also contains superclass definitions for site-specific classes, such as messa
 '''
 import discord
 from selenium import webdriver
+from selenium_stealth import stealth
+import undetected_chromedriver as uc
 from random import choice
 
 '''
@@ -171,8 +173,8 @@ async def startWebDriver():
     options.add_argument('--no-sandbox')
     #not specifically going out of our way to tell the site we're a bot helps with rate limiting
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option("useAutomationExtension", False)
+    #options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    #options.add_experimental_option("useAutomationExtension", False)
     #the below three options improve performance
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
@@ -180,7 +182,16 @@ async def startWebDriver():
     #pick a random user agent for each driver instance, helps to avoid rate limiting
     #options.add_argument("--user-agent="+choice(useragents))
     options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
-    driver = webdriver.Chrome(options=options)
-    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    driver = uc.Chrome(options=options)
+    #driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+    stealth(driver,
+        languages=["en-US", "en", "en-IN"],
+        vendor="Google Inc.",
+        platform="Win32",
+        webgl_vendor="Intel Inc.",
+        renderer="Intel Iris OpenGL Engine",
+        fix_hairline=True,
+        )
 
     return driver
