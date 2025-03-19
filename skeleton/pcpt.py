@@ -5,10 +5,14 @@ Handles PCPriceTracker build list links
 import discord
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium_stealth import stealth
+import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import datetime
+
+#from seleniumwire import webdriver as wirewd - DEBUG ONLY - requires selenium-wire AND blinker==1.7.0 
 
 import skeleton.soul as soul
 
@@ -73,21 +77,21 @@ class List(soul.BuildList):
             - driver: selenium webdriver object
         Returns: N/A
         '''
-        #set up correct geolocation for pcpt - New Delhi
-        params = {
-            "latitude": 28.6139,
-            "longitude": 77.2088,
-            "accuracy": 100 
-        }
-        driver.execute_cdp_cmd("Page.setGeolocationOverride", params)
         # scrape url with selenium and feed to soup for html parsing
         driver.get(self.link)
         try:
-            element = WebDriverWait(driver, timeout=15, poll_frequency=5).until(
+            element = WebDriverWait(driver, timeout=15, poll_frequency=7).until(
                 EC.presence_of_element_located((By.ID, "shared_build"))
             )
         except Exception as e:
             print(e)
+
+        '''
+        for request in driver.requests:
+            print(request.url) # <--------------- Request url
+            print(request.headers) # <----------- Request headers
+            print(request.response.headers) # <-- Response headers
+        '''
 
         self.soup = BeautifulSoup(driver.page_source,"html.parser")
 
@@ -156,7 +160,7 @@ class List(soul.BuildList):
 
         # structure embed output
         #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
-        embed = discord.Embed(title=(self.siteSource + ":flag_in:\n" + self.link), description=("Sent by " + sender + "\n\n" + componentList), color=0x019119)
+        embed = discord.Embed(title=(self.siteSource + " :flag_in:\n" + self.link), description=("Sent by " + sender + "\n\n" + componentList), color=0x019119)
         try:
             embed.add_field(name="Total:", value=("``"+total+"``"), inline=False)
             embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
@@ -178,3 +182,48 @@ class List(soul.BuildList):
         embed.add_field(name="", value="I couldn't find a valid parts table in this list link. Please make sure you've copied the link correctly.\n\nIf you're certain the link is correct and this error persists, there may be a bug - check my About Me for support.")
         embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         return embed
+
+async def startWebDriver():
+    '''
+    Initializes a Chrome Webdriver instance and returns it
+    Inputs: N/A
+    Returns: Selenium Webdriver object
+    This function should be called once for every message we handle
+    '''
+    # initialize selenium chrome webdriver with necessary settings
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
+    options.add_argument('--window-size=1920x1032')
+    options.add_argument('--no-sandbox')
+    #not specifically going out of our way to tell the site we're a bot helps with rate limiting
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    #options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    #options.add_experimental_option("useAutomationExtension", False)
+    #the below three options improve performance
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--dns-prefetch-disable')
+    #custom user agent prevents rate limiting by emulating a real desktop user
+    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
+    driver = uc.Chrome(options=options)
+    #driver = wirewd.Chrome(options=options)
+    #driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+    stealth(driver,
+        languages=["en-IN", "en"],
+        vendor="Google Inc.",
+        platform="Win32",
+        webgl_vendor="Intel Inc.",
+        renderer="Intel Iris OpenGL Engine",
+        fix_hairline=True,
+        )
+    
+    #set up correct geolocation for pcpt - New Delhi
+    params = {
+        "latitude": 28.6139,
+        "longitude": 77.2088,
+        "accuracy": 100 
+    }
+    driver.execute_cdp_cmd("Page.setGeolocationOverride", params)
+
+    return driver

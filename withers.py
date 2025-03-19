@@ -58,11 +58,15 @@ def runBot():
         #PCPP
         if ("pcpartpicker.com/list/" in message.content) or ("pcpartpicker.com/b/" in message.content) or ("pcpartpicker.com/user/" in message.content):
             rqMsg = pcpp.Msg(message, message.content, str(message.author.mention))
-            await processMessage(message, rqMsg)
+            #start webdriver instance for this message
+            driver = await pcpp.startWebDriver()
+            await processMessage(message, rqMsg, driver)
         #PCPT
         if ("pcpricetracker.in/b/s/" in message.content):
+            #start webdriver instance for this message
+            driver = await pcpt.startWebDriver()
             rqMsg = pcpt.Msg(message, message.content, str(message.author.mention))
-            await processMessage(message, rqMsg)
+            await processMessage(message, rqMsg, driver)
         # if this is a DM, forward it to the support channel
         if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):
             # Getting the channel
@@ -72,16 +76,16 @@ def runBot():
             return
     client.run(TOKEN)
 
-async def processMessage(message, rqMsg):
+async def processMessage(message, rqMsg, driver):
     '''
     Takes user message and handles it, outputting a response message from the bot
     Inputs: 
+        - message: discord message object we're using
         - rqMsg: BuildListMessage child object containing the necessary lists
+        - driver: customized selenium webdriver object to match the site we need
     Returns: N/A
     '''
     try:
-        #start webdriver instance for this message
-        driver = await soul.startWebDriver()
         #first, find all the links
         await rqMsg.findLinks(driver)
         #handle a message for each link in the list

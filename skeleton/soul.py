@@ -7,7 +7,6 @@ import discord
 from selenium import webdriver
 from selenium_stealth import stealth
 import undetected_chromedriver as uc
-from random import choice
 
 '''
 NOTE:
@@ -159,17 +158,15 @@ class BuildList:
 
 async def startWebDriver():
     '''
-    Initializes a Chrome Webdriver instance and returns it
+    Initializes a customized-default Chrome Webdriver instance and returns it
     Inputs: N/A
     Returns: Selenium Webdriver object
     This function should be called once for every message we handle
     '''
     # initialize selenium chrome webdriver with necessary settings
-    #custom user agent prevents rate limiting by emulating a real desktop user
-    useragents = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36 Edg/132.0.0."]
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--window-size=1920x1080')
+    #options.add_argument('--headless')
+    options.add_argument('--window-size=1920x1032')
     options.add_argument('--no-sandbox')
     #not specifically going out of our way to tell the site we're a bot helps with rate limiting
     options.add_argument("--disable-blink-features=AutomationControlled")
@@ -179,14 +176,13 @@ async def startWebDriver():
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
-    #pick a random user agent for each driver instance, helps to avoid rate limiting
-    options.add_argument("--user-agent="+choice(useragents))
-    #options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
+    #set user agent to mimic real chrome
+    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
     driver = uc.Chrome(options=options)
     #driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
     stealth(driver,
-        languages=["en-US", "en", "en-IN"],
+        languages=["en-US", "en"],
         vendor="Google Inc.",
         platform="Win32",
         webgl_vendor="Intel Inc.",

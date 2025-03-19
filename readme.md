@@ -100,10 +100,11 @@ Now you can interact with python regularly, with the newly created venv as the s
 - *What's New:* 
     <br>
     <br>
-    **v2.0.2**
+    **v2.1.0**
+    - Added support for PCPriceTracker.in build links
     - Links to individual parts in PCPP lists now match the country of the full list.
-    - The bot can now recieve DMs in a channel of your choice.
-    - Tweaked some webdriver settings for better reliability.
+    - The bot can now recieve DMs in a channel of your choice. (experimental)
+    - Changed how the webdriver is structured, tailoring settings to each site for improved reliability and performance.
     <br>
 
     **v2.0.1**
