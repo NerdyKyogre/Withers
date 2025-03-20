@@ -23,6 +23,7 @@ INTENTS = discord.Intents.default()
 INTENTS.message_content = True
 import os
 from dotenv import load_dotenv
+import sys
 
 from skeleton import *
 
@@ -62,7 +63,7 @@ def runBot():
             driver = await pcpp.startWebDriver()
             await processMessage(message, rqMsg, driver)
         #PCPT
-        if ("pcpricetracker.in/b/s/" in message.content):
+        if ("pcpricetracker.in/b/s/" in message.content) and ("--use-extended-modules" in sys.argv):
             #start webdriver instance for this message
             driver = await pcpt.startWebDriver()
             rqMsg = pcpt.Msg(message, message.content, str(message.author.mention))

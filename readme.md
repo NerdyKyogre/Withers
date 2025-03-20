@@ -94,11 +94,15 @@ Now you can interact with python regularly, with the newly created venv as the s
 - If you want to update the bot later to keep up with the latest features, simply enter the directory and do
     ```Sh
     git pull
+
+- Some features of the bot may be disabled by default while they are in the testing phase or if further changes are yet to be made. To enable these, run the bot with the following argument:
+    ```Sh
+    python ./withers.py --use-extended-modules
     ```
 ### <p align=center> That's it, you're good to go!
 
 ## What's new in this version:
-- Added support for PCPriceTracker.in build links
+- ~~Added support for PCPriceTracker.in build links.~~ Well, this didn't last long; cloudflare updated and our production instance is getting captcha'd *hard*. If you want to try this module yourself, run the bot with the command line argument ``--use-extended-modules``. We're currently looking into a workaround to make PCPT support more reliable.
 - Links to individual parts in PCPP lists now match the country of the full list.
 - The bot can now recieve DMs in a channel of your choice. (experimental)
 - Changed how the webdriver is structured, tailoring settings to each site for improved reliability and performance.
