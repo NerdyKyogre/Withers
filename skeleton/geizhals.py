@@ -9,6 +9,8 @@ from selenium_stealth import stealth
 import undetected_chromedriver as uc
 from random import choice
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import datetime
 import re
 
@@ -50,7 +52,7 @@ class Msg(soul.BuildListMsg):
         # we do this instead of slicing so we can more easily detect invalid/cut off links
         link = "https://"
         #geizhals link suffixes are 7 digit numbers
-        for i in range(start, (start + bodyLength + 7)):
+        for i in range(linkStartIndex, (linkStartIndex + bodyLength + 7)):
             try:
                 link += text[i] 
             except Exception:
@@ -100,12 +102,19 @@ class List(soul.BuildList):
             rejectCookieButton.click()
         except Exception:
             pass
-        #get quantities
+        #wait for parts to populate
+        try:
+            WebDriverWait(driver, timeout=10, poll_frequency=1).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "card"))
+            )
+        except Exception as e:
+            print("Couldn't load Geizhals Network wishlist link in time - no data after 10 seconds")
+        #get lazy loaded quantities early
         elements = driver.find_elements(By.CLASS_NAME, "quantity-input")
         for element in elements:
             try:
                 driver.execute_script("arguments[0].scrollIntoView();", element)
-                self.quantities.append(element.getText)
+                self.quantities.append(int(element.get_attribute('value')[0]))
             except Exception:
                 pass
         self.soup = BeautifulSoup(driver.page_source,"html.parser")
@@ -143,7 +152,8 @@ class List(soul.BuildList):
         tooLong = False
         overCount = 0
 
-        for partCard in partCards:
+        for i in range(len(partCards)):
+            partCard = partCards[i]
             #every element in these tables is inside a div - get the only link element inside product name. its href is part link, and text is part name
             partNameField = partCard.find("div", class_="productname").find("a")
             partName = partNameField.get_text().strip() 
@@ -156,10 +166,10 @@ class List(soul.BuildList):
                 #get price per unit
                 #price is the text of a link to the offerlist for the part
                 partPrice = partCard.find("span", class_="bestprice").find("a").get_text().strip()
+                partPrice = partPrice.replace(",",".")
 
-                #TODO: find a way to get the quantity value - it's lazy loaded, so there's no easy HTMl way to do it.
-                #get quantity - we need to adjust total price if it's more than 1
-                quantity = int(partCard.find("input", class_="quantity-input", type="number"))
+                #get quantity from parallel array - we need to adjust total price if it's more than 1
+                quantity = self.quantities[i]
 
                 #if we have multiple, adjust part price in the same way as we did for pcpp
                 if quantity > 1:
@@ -170,8 +180,7 @@ class List(soul.BuildList):
 
                 partPrice =  ("``" + partPrice + "``")
 
-            except Exception as e:
-                print(e)
+            except Exception:
                 partPrice = "``N/A``"
 
             #check to make sure we're not over the character limit
@@ -191,8 +200,8 @@ class List(soul.BuildList):
         if tooLong:
             componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " part(s) were not shown. Please click the button below to see the full list.*")
         
-        #grab total
-        total = self.soup.find("span", class_="wishlist-sum").get_text()
+        #grab total - it's the second of two fields
+        total = self.soup.find_all("span", class_="wishlist-sum")[1].get_text().strip().replace(",",".") #tweak format for consistency
 
         # structure embed output
         #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
@@ -238,7 +247,7 @@ async def startWebDriver():
     #custom user agent prevents rate limiting by emulating a real desktop user
     useragents = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.3124.95"]
     options = webdriver.ChromeOptions()
-    #options.add_argument('--headless')
+    options.add_argument('--headless')
     options.add_argument('--window-size=1920x1032')
     options.add_argument('--no-sandbox')
     #not specifically going out of our way to tell the site we're a bot helps with rate limiting
