@@ -204,7 +204,7 @@ async def startWebDriver():
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
     #custom user agent prevents rate limiting by emulating a real desktop user
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
+    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
     driver = uc.Chrome(options=options)
     #driver = wirewd.Chrome(options=options)
     #driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")

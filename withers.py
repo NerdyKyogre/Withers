@@ -68,6 +68,11 @@ def runBot():
             driver = await pcpt.startWebDriver()
             rqMsg = pcpt.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg, driver)
+        #Geizhals Network
+        if ("geizhals.de/wishlists/" in message.content) or ("geizhals.at/wishlists/" in message.content) or ("geizhals.eu/wishlists/" in message.content) or ("skinflint.co.uk/wishlists/" in message.content) or ("cenowarka.pl/wishlists/" in message.content):
+            driver = await geizhals.startWebDriver()
+            rqMsg = geizhals.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg, driver)
         # if this is a DM, forward it to the support channel
         if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):
             # Getting the channel
