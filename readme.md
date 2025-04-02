@@ -102,6 +102,7 @@ Now you can interact with python regularly, with the newly created venv as the s
 ### <p align=center> That's it, you're good to go!
 
 ## What's new in this version:
+- Fixed a bug that would cause undetected chromedriver to complain about an outdated chrome instance and cause an exception. If you have this issue, pull the latest version from main for a temporary patch - a better solution is in testing right now and will be ready for the next major release.
 - ~~Added support for PCPriceTracker.in build links.~~ Well, this didn't last long; cloudflare updated and our production instance is getting captcha'd *hard*. If you want to try this module yourself, run the bot with the command line argument ``--use-extended-modules``. We're currently looking into a workaround to make PCPT support more reliable.
 - Links to individual parts in PCPP lists now match the country of the full list.
 - The bot can now recieve DMs in a channel of your choice. (experimental)
