@@ -6,13 +6,14 @@ import discord
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium_stealth import stealth
-import undetected_chromedriver as uc
+#import undetected_chromedriver as uc
 from random import choice
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import datetime
 import re
+import asyncio
 
 import skeleton.soul as soul
 
@@ -109,6 +110,8 @@ class List(soul.BuildList):
             )
         except Exception as e:
             print("Couldn't load Geizhals Network wishlist link in time - no data after 10 seconds")
+        if ("geizhals" in self.link) or ("cenowarka" in self.link):
+            await asyncio.sleep(1)
         #get lazy loaded quantities early
         elements = driver.find_elements(By.CLASS_NAME, "quantity-input")
         for element in elements:
@@ -161,6 +164,11 @@ class List(soul.BuildList):
             #format into hyperlink
             partName = ("[" + partName + "](" + partLink + ")")
 
+            #find part category
+            #category is 3 fields - we want the SECOND one specifically
+            partCategory = partCard.find("ol", class_="category-breadcrumb").find_all("a")[1].get_text().strip()
+            partCategory = ("**" + partCategory + "**")
+
             #wrap price check in try-catch; if the element doesn't exist (we're oos) it's N/A
             try:
                 #get price per unit
@@ -194,7 +202,7 @@ class List(soul.BuildList):
                 continue
 
             #add the part to the string
-            componentList = componentList + partPrice + " - " + partName + "\n"
+            componentList = componentList + partCategory + " - " + partPrice + " - " + partName + "\n"
         
         #if we went over the character limit, explain ourselves
         if tooLong:
@@ -252,17 +260,24 @@ async def startWebDriver():
     options.add_argument('--no-sandbox')
     #not specifically going out of our way to tell the site we're a bot helps with rate limiting
     options.add_argument("--disable-blink-features=AutomationControlled")
-    #options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    #options.add_experimental_option("useAutomationExtension", False)
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
     #the below three options improve performance
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
     #pick a random user agent for each driver instance, helps to avoid rate limiting
     options.add_argument("--user-agent="+choice(useragents))
-    #options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
-    driver = uc.Chrome(options=options, version_main=134)
-    #driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    #for geizhals, we need to enable automatic translation from either german or polish
+    prefs = {
+        "translate_whitelists": {"de":"en", "pl":"en"},
+        "translate":{"enabled":"true"}
+    }
+    options.add_experimental_option("prefs", prefs)
+
+    #driver = uc.Chrome(options=options, version_main=134)
+    driver = webdriver.Chrome(options=options)
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
     stealth(driver,
         languages=["en-UK", "en"],
