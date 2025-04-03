@@ -73,6 +73,11 @@ def runBot():
             driver = await geizhals.startWebDriver()
             rqMsg = geizhals.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg, driver)
+        #Tweakers
+        if ("tweakers.nl/gallery" in message.content) or ("tweakers.net/gallery" in message.content) or ("tweakers.net/pricewatch/bestelkosten" in message.content) or ("tweakers.nl/pricewatch/bestelkosten" in message.content):
+            driver = await tweakers.startWebDriver()
+            rqMsg = tweakers.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg, driver)
         # if this is a DM, forward it to the support channel
         if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):
             # Getting the channel
