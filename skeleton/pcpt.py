@@ -95,11 +95,12 @@ class List(soul.BuildList):
 
         self.soup = BeautifulSoup(driver.page_source,"html.parser")
 
-    async def buildTable(self, sender):
+    async def buildTable(self, sender, message):
         '''
         Parses data table from PCPP list link into a discord embed
         Inputs: 
             sender - author of calling message, type string
+            message - calling discord message object
         Returns: response message, type discord embed object
         '''
         #wrap this logic in try-catch to make sure list is real
@@ -204,7 +205,7 @@ async def startWebDriver():
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
     #custom user agent prevents rate limiting by emulating a real desktop user
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
+    options.add_argument("--user-agent=" + await soul.getStaticUserAgent())
     driver = uc.Chrome(options=options, version_main=134)
     #driver = wirewd.Chrome(options=options)
     #driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")

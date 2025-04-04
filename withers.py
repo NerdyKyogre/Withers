@@ -17,6 +17,7 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
+#TODO:
 
 import discord
 INTENTS = discord.Intents.default()
@@ -108,7 +109,11 @@ async def processMessage(message, rqMsg, driver):
                 #scrape this link
                 await buildList.generateSoup(driver)
                 #embed the results and add a View to store the button(s).
-                await message.channel.send(embed=(await buildList.buildTable(await rqMsg.getSender())), view=soul.Buttons(await buildList.getSoup(), await buildList.getLink(), await buildList.getButtons()))
+                #in the event of a bad list, we need to send the embed immediately - easiest solution is to give buildtable the message and then raise an exception
+                try:
+                    await message.channel.send(embed=(await buildList.buildTable(await rqMsg.getSender(), message)), view=soul.Buttons(await buildList.getSoup(), await buildList.getLink(), await buildList.getButtons()))
+                except ValueError:
+                    pass
         
         driver.quit()
     #any exception encountered while parsing the list should result in the bot refusing to reply and continuing to look for new messages

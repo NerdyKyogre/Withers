@@ -8,6 +8,12 @@ from selenium import webdriver
 from selenium_stealth import stealth
 #import undetected_chromedriver as uc
 
+#Global constants for user agents
+CHROME_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+FIREFOX_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0"
+SAFARI_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+EDGE_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.3124.95"
+
 '''
 NOTE:
 All functions apart from RunBot() and constructors, INCLUDING ALL OTHER CLASS METHODS AND THEIR DESCENDANTS, MUST be async.
@@ -177,7 +183,7 @@ async def startWebDriver():
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
     #set user agent to mimic real chrome
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
+    options.add_argument("--user-agent=" + CHROME_WIN)
     #driver = uc.Chrome(options=options, version_main=134)
     driver = webdriver.Chrome(options=options)
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
@@ -192,3 +198,38 @@ async def startWebDriver():
         )
 
     return driver
+
+async def setDefaultDriverOptions(options, headful=False):
+    '''
+    Sets the default chromedriver options for all driver instances
+    Inputs:
+        - options: Chrome Options object
+        - headful: Override to disable setting headless, defaults to False
+    Returns: modified version of options
+    '''
+    if headful == False:
+        options.add_argument('--headless')
+    options.add_argument('--window-size=1920x1032')
+    options.add_argument('--no-sandbox')
+    #not specifically going out of our way to tell the site we're a bot helps with rate limiting
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
+    #the below three options improve performance
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--dns-prefetch-disable')
+    
+    return options
+
+async def getUserAgents():
+    '''
+    Returns the array of user agents for random selection
+    '''
+    return [CHROME_WIN, FIREFOX_WIN, SAFARI_MAC, EDGE_WIN]
+
+async def getStaticUserAgent():
+    '''
+    Returns a 1-element array containing the default chrome user agent, for modules that need a static/matching user agent.
+    '''
+    return [CHROME_WIN]

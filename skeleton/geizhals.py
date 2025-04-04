@@ -123,11 +123,12 @@ class List(soul.BuildList):
                 pass
         self.soup = BeautifulSoup(driver.page_source,"html.parser")
 
-    async def buildTable(self, sender):
+    async def buildTable(self, sender, message):
         '''
         Parses data table from Geizhals network wishlist link into a discord embed
         Inputs: 
             sender - author of calling message, type string
+            message - calling discord message object
         Returns: response message, type discord embed object
         '''
         #get country from link:
@@ -145,9 +146,9 @@ class List(soul.BuildList):
             title = self.soup.find("a", href=self.link).get_text()
 
             #grab list of all part cards
-            partCards = self.soup.find_all("div", class_="card svelte-j00ssk")
+            partCards = self.soup.find_all("div", class_="card")
         except Exception:
-            return (await self.badListEmbed(sender))
+            return (await self.badListEmbed(sender, message))
 
         #structure output
         #initialize giant string of output
@@ -224,24 +225,24 @@ class List(soul.BuildList):
         
         return(embed)
     
-    async def badListEmbed(self, sender):
+    async def badListEmbed(self, sender, message):
         '''
         Creates and sends an embedded message in the event that we detect a private or malformed link
         Inputs: 
             - sender: the sender id of the message
+            - message: calling discord message object
         Returns: N/A
         '''
         #set up embed
-        embed = discord.Embed(title="Private or invalid Geizhals wishlist detected", description=("Sent by " + sender + "\n"), color=0xFF0000)
+        embed = discord.Embed(title="Private or invalid Geizhals wishlist\n" + self.link, description=("Sent by " + sender + "\n"), color=0xFF0000)
         embed.add_field(name="", value="I ran into some trouble opening a list you sent.\n\nPlease make sure all the Geizhals network wishlist links (geizhals, skinflint, cenowarka) in your message are valid and set to Public.")
-        '''
         #upload the image
         file = discord.File("./assets/private_geizhals.png", filename="private_geizhals.png")
         embed.set_image(url="attachment://private_geizhals.png")
-        '''
         #timestamp for better legibility
         embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
-        return embed
+        await message.channel.send(file=file, embed=embed)
+        raise ValueError("Bad or private Geizhals list detected")
 
             
 
@@ -254,19 +255,8 @@ async def startWebDriver():
     '''
     # initialize selenium chrome webdriver with necessary settings
     #custom user agent prevents rate limiting by emulating a real desktop user
-    useragents = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.3124.95"]
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--window-size=1920x1032')
-    options.add_argument('--no-sandbox')
-    #not specifically going out of our way to tell the site we're a bot helps with rate limiting
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option("useAutomationExtension", False)
-    #the below three options improve performance
-    options.add_argument('--disable-gpu')
-    options.add_argument('--disable-extensions')
-    options.add_argument('--dns-prefetch-disable')
+    useragents = await soul.getUserAgents()
+    options = await soul.setDefaultDriverOptions(webdriver.ChromeOptions())
     #pick a random user agent for each driver instance, helps to avoid rate limiting
     options.add_argument("--user-agent="+choice(useragents))
     #for geizhals, we need to enable automatic translation from either german or polish
