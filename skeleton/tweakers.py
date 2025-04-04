@@ -8,8 +8,6 @@ from selenium import webdriver
 from selenium_stealth import stealth
 from random import choice
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import datetime
 import re
 import asyncio
@@ -23,7 +21,7 @@ class Msg(soul.BuildListMsg):
 
     async def findLinks(self, driver):
         '''
-        Recursively finds all Geizhals network list links in the message and adds them to the list of links
+        Recursively finds all Tweakers network list links in the message and adds them to the list of links
         Inputs: 
             - driver: Selenium webdriver object
         Returns: N/A
@@ -264,8 +262,8 @@ class List(soul.BuildList):
         file = discord.File("./assets/private_tweakers.png", filename="private_tweakers.png")
         embed.set_image(url="attachment://private_tweakers.png")
         #timestamp for better legibility
-        embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
-        return embed
+        await message.channel.send(file=file, embed=embed)
+        raise ValueError("Bad or private Tweakers list detected")
 
 async def startWebDriver():
     '''
