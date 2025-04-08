@@ -111,6 +111,7 @@ class List(soul.BuildList):
             )
         except Exception as e:
             print("Couldn't load Geizhals Network wishlist link in time - no data after 10 seconds")
+        #need another wait for translation to work
         if ("geizhals" in self.link) or ("cenowarka" in self.link):
             await asyncio.sleep(1)
         #get lazy loaded quantities early
