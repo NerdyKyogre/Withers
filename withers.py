@@ -43,6 +43,9 @@ def runBot():
     except Exception:
         DM_CHANNEL = None
 
+    #update user agents
+    soul.updateUserAgents()
+
     #initialize a new client instance with the necessary intents - we need the import message content intent for parsing
     client = discord.Client(intents=INTENTS)
     
@@ -78,6 +81,11 @@ def runBot():
         if ("tweakers.nl/gallery" in message.content) or ("tweakers.net/gallery" in message.content) or ("tweakers.net/pricewatch/bestelkosten" in message.content) or ("tweakers.nl/pricewatch/bestelkosten" in message.content):
             driver = await tweakers.startWebDriver()
             rqMsg = tweakers.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg, driver)
+        #BAPCGG
+        if ("buildapc.gg" in message.content) or ("komponentkoll.se" in message.content) and ("/build/" in message.content):
+            driver = await bapcgg.startWebDriver()
+            rqMsg = bapcgg.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg, driver)
         # if this is a DM, forward it to the support channel
         if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):

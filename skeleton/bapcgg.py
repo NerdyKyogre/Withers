@@ -55,6 +55,17 @@ class Msg(soul.BuildListMsg):
         text = text.replace(link[8:], "")
         await self.findLinks(driver, text) #recurse on the remaining links in the message
         return
+    
+    async def generateLists(self):
+        '''
+        Loops over every link found in the message and creates a new list object for it, returning them all
+        Inputs: N/A
+        Returns: Array of BuildList objects
+        '''
+        lists = []
+        for link in self.links:
+            lists.append(List(link))
+        return lists
 
 class List(soul.BuildList):
 
@@ -81,14 +92,14 @@ class List(soul.BuildList):
             await asyncio.sleep(1)
         
         #open all parts to make product pages visible
-        elements = driver.find_elements(By.CLASS_NAME, 'summary hover')
+        elements = driver.find_elements(By.CLASS_NAME, 'summary')
         for element in elements:
             try:
                 driver.execute_script("arguments[0].scrollIntoView();", element)
                 element.click()
             except Exception:
                 pass
-        await asyncio.sleep(0.3) #need to wait for the link load function to complete, otherwise we feed "Loading..." into soup
+        await asyncio.sleep(1) #need to wait for the link load function to complete, otherwise we feed "Loading..." into soup
 
 
         self.soup = BeautifulSoup(driver.page_source,"html.parser")
@@ -129,23 +140,33 @@ class List(soul.BuildList):
             #get basic info about part
             partInfo = partRow.find("div", class_="info")
             partName = partInfo.find("h4").get_text().strip()
+            #remove quantity in advance
+            if partName[-2] == 'x':
+                #we need to copy this string using an empty join because otherwise we slice by reference and soup wigs out for unknown reasons
+                partName = ''.join(partName[:-2])
             partType = partInfo.find("h5").get_text().strip()
 
             rowLinks = partRow.find_all("a")
             partLink = ""
             for linkTag in rowLinks:
                 if "produkt" in linkTag['href']:
-                    partLink = self.link[:(self.link.find("/build/"))] + linkTag['href']
+                    #country is annoyingly included in the link href
+                    if "komponentkoll.se" not in self.link:
+                        partLink = self.link[:(self.link.find("/build/")) - 3] + linkTag['href']
+                    else:
+                        partLink = self.link[:(self.link.find("/build/"))] + linkTag['href']
             if len(partLink) > 1:
                 partName = "[" + partName + "](" + partLink + ")"
 
             partCount = 1
             try:
-                partCount = partRow.find("span", class_="count").get_text().replace("x", "").strip()
+                partCount = int(partRow.find("span", class_="count").get_text().replace("x", "").strip())
+                if partCount > 1:
+                    partName = ("**("+ str(partCount) + "x)** " + partName)
             except Exception:
                 pass
 
-            try: 
+            try:
                 partPrice = partRow.find("div", class_="price").get_text().strip()
 
                 #move kr to front and set up float so we can do regex
@@ -156,7 +177,6 @@ class List(soul.BuildList):
                     unitPrice = re.findall("\d+\.\d+", partPrice)
                     totalPrice = partCount * (float(unitPrice[0]))
                     partPrice = partPrice.replace(unitPrice[0], ("%.2f" % totalPrice))
-                    partName = ("**("+ str(partCount) + "x)** " + partName)
                 
                 partPrice = ("``" + partPrice + "``")
             except Exception:
@@ -173,17 +193,25 @@ class List(soul.BuildList):
                 continue
 
             #add the part to the string
-            componentList = componentList + partType + " - " + partPrice + " - " + partName + "\n"
+            componentList = componentList + "**" + partType + "**" + " - " + partPrice + " - " + partName + "\n"
 
         #if we went over the character limit, explain ourselves
         if tooLong:
             componentList += ("\n*Sorry, this part list is too long. " + str(overCount) + " part(s) were not shown. Please click the button below to see the full list.*")
-        
-        #get total
-        total = self.soup.find("div", class_="total").find("span", class_="price").get_text().strip()
+
+        #get total - there's no guaranteed position for this so we have to loop through
+        totals = self.soup.find_all("div", class_="total")
+        total = "N/A"
+        for row in totals:
+            try:
+                total = row.find("span", class_="price").get_text().strip()
+            except Exception:
+                pass
+
         #format it to match other prices
         if "kr" in total:
             total = total.replace(" kr", ".00")
+            total = "kr " + total
             
         # structure embed output
         #abusing header + giant string here because header has a longer character limit than field - this increases the length of the list we can display from 1024 to 4096 characters
@@ -228,13 +256,15 @@ async def startWebDriver():
     options = await soul.setDefaultDriverOptions(webdriver.ChromeOptions())
     #pick a random user agent for each driver instance, helps to avoid rate limiting
     options.add_argument("--user-agent="+choice(useragents))
-    #for BAPCGG, we need to enable automatic translation from either german or polish
+    #for BAPCGG, we need to enable automatic translation from either swedish, danish or norwegian
+    #for some reason, translating this site breaks formatting horribly when we're faced with parts of quantity > 1 -- needs further investigation
+    '''
     prefs = {
-        "translate_whitelists": {"dk":"en", "se":"en", "no":"en"},
+        "translate_whitelists": {"da":"en", "sv":"en", "no":"en"},
         "translate":{"enabled":"true"}
     }
     options.add_experimental_option("prefs", prefs)
-
+    '''
     driver = webdriver.Chrome(options=options)
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 

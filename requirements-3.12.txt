@@ -28,3 +28,4 @@ wsproto==1.2.0
 yarl==1.18.3
 undetected-chromedriver
 selenium-stealth
+requests
