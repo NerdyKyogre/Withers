@@ -97,6 +97,7 @@ class List(soul.BuildList):
             try:
                 driver.execute_script("arguments[0].scrollIntoView();", element)
                 element.click()
+                await asyncio.sleep(0.1)
             except Exception:
                 pass
         await asyncio.sleep(1) #need to wait for the link load function to complete, otherwise we feed "Loading..." into soup
@@ -160,7 +161,7 @@ class List(soul.BuildList):
 
             partCount = 1
             try:
-                partCount = int(partRow.find("span", class_="count").get_text().replace("x", "").strip())
+                partCount = int(partRow.find("span", class_="count").get_text().replace("x", "").replace("\u200b","").strip())
                 if partCount > 1:
                     partName = ("**("+ str(partCount) + "x)** " + partName)
             except Exception:
@@ -171,7 +172,7 @@ class List(soul.BuildList):
 
                 #move kr to front and set up float so we can do regex
                 if "kr" in partPrice:
-                    partPrice = ("kr " + partPrice.replace(" kr", ".00"))
+                    partPrice = ("kr " + partPrice.replace(" ", "").replace("kr", ".00"))
 
                 if partCount > 1:
                     unitPrice = re.findall("\d+\.\d+", partPrice)
@@ -210,7 +211,7 @@ class List(soul.BuildList):
 
         #format it to match other prices
         if "kr" in total:
-            total = total.replace(" kr", ".00")
+            total = total.replace(" ", "").replace("kr", ".00")
             total = "kr " + total
             
         # structure embed output
@@ -258,13 +259,13 @@ async def startWebDriver():
     options.add_argument("--user-agent="+choice(useragents))
     #for BAPCGG, we need to enable automatic translation from either swedish, danish or norwegian
     #for some reason, translating this site breaks formatting horribly when we're faced with parts of quantity > 1 -- needs further investigation
-    '''
+    
     prefs = {
         "translate_whitelists": {"da":"en", "sv":"en", "no":"en"},
         "translate":{"enabled":"true"}
     }
     options.add_experimental_option("prefs", prefs)
-    '''
+    
     driver = webdriver.Chrome(options=options)
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 

@@ -17,7 +17,6 @@
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-#TODO:
 
 import discord
 INTENTS = discord.Intents.default()
@@ -86,6 +85,12 @@ def runBot():
         if ("buildapc.gg" in message.content) or ("komponentkoll.se" in message.content) and ("/build/" in message.content):
             driver = await bapcgg.startWebDriver()
             rqMsg = bapcgg.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg, driver)
+        #meupc
+        if ("meupc.net/build/" in message.content):
+            rqMsg = meupc.Msg(message, message.content, str(message.author.mention))
+            #start webdriver instance for this message
+            driver = await meupc.startWebDriver()
             await processMessage(message, rqMsg, driver)
         # if this is a DM, forward it to the support channel
         if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):

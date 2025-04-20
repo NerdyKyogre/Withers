@@ -18,7 +18,7 @@ Withers is the official Part List Bot of The Tech™ since 2025.
 ## Why Withers?
 Withers offers a number of unique features that set it apart from other buildhelp bots.
 
-- It supports a variety of parts comparison platforms; currently PCPartPicker and PCPriceTracker are supported, with more to come soon!
+- It supports a variety of parts comparison platforms including PCPartPicker, Buildapc.gg, Meupc, Geizhals, and Tweakers.
 - It has indicators for parametric filters, duplicate parts, and other helpful extras for making build lists.
 - It links custom part URLs correctly and handles multiple currencies in one list; if you can make the list, Withers can display it!
 - It uses the *full* character limit to show more parts in a single embed.
@@ -102,11 +102,10 @@ Now you can interact with python regularly, with the newly created venv as the s
 ### <p align=center> That's it, you're good to go!
 
 ## What's new in this version:
-- Fixed a bug that would cause undetected chromedriver to complain about an outdated chrome instance and cause an exception. If you have this issue, pull the latest version from main for a temporary patch - a better solution is in testing right now and will be ready for the next major release.
-- ~~Added support for PCPriceTracker.in build links.~~ Well, this didn't last long; cloudflare updated and our production instance is getting captcha'd *hard*. If you want to try this module yourself, run the bot with the command line argument ``--use-extended-modules``. We're currently looking into a workaround to make PCPT support more reliable.
-- Links to individual parts in PCPP lists now match the country of the full list.
-- The bot can now recieve DMs in a channel of your choice. (experimental)
-- Changed how the webdriver is structured, tailoring settings to each site for improved reliability and performance.
+- Added support for the Geizhals network, Tweakers, Buildapc.gg, and Meupc.
+- Changed webdriver settings to improve usability -- you shouldn't see errors about an incorrect chromedriver version anymore.
+- Webdriver user agents now update automatically when the bot is started.
+- Updated requirements.txt to include requests. If you are updating your instance from a previous release, make sure to install requirements again before running the bot. 
 <br>
 
 #### <p align=center> For the full roadmap, please consult [our wiki's changelog page](https://github.com/NerdyKyogre/Withers/wiki/Changelog).
