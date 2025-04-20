@@ -42,6 +42,9 @@ def runBot():
     except Exception:
         DM_CHANNEL = None
 
+    #update user agents
+    soul.updateUserAgents()
+
     #initialize a new client instance with the necessary intents - we need the import message content intent for parsing
     client = discord.Client(intents=INTENTS)
     
@@ -67,6 +70,27 @@ def runBot():
             #start webdriver instance for this message
             driver = await pcpt.startWebDriver()
             rqMsg = pcpt.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg, driver)
+        #Geizhals Network
+        if ("geizhals.de/wishlists/" in message.content) or ("geizhals.at/wishlists/" in message.content) or ("geizhals.eu/wishlists/" in message.content) or ("skinflint.co.uk/wishlists/" in message.content) or ("cenowarka.pl/wishlists/" in message.content):
+            driver = await geizhals.startWebDriver()
+            rqMsg = geizhals.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg, driver)
+        #Tweakers
+        if ("tweakers.nl/gallery" in message.content) or ("tweakers.net/gallery" in message.content) or ("tweakers.net/pricewatch/bestelkosten" in message.content) or ("tweakers.nl/pricewatch/bestelkosten" in message.content):
+            driver = await tweakers.startWebDriver()
+            rqMsg = tweakers.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg, driver)
+        #BAPCGG
+        if ("buildapc.gg" in message.content) or ("komponentkoll.se" in message.content) and ("/build/" in message.content):
+            driver = await bapcgg.startWebDriver()
+            rqMsg = bapcgg.Msg(message, message.content, str(message.author.mention))
+            await processMessage(message, rqMsg, driver)
+        #meupc
+        if ("meupc.net/build/" in message.content):
+            rqMsg = meupc.Msg(message, message.content, str(message.author.mention))
+            #start webdriver instance for this message
+            driver = await meupc.startWebDriver()
             await processMessage(message, rqMsg, driver)
         # if this is a DM, forward it to the support channel
         if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):
@@ -98,7 +122,11 @@ async def processMessage(message, rqMsg, driver):
                 #scrape this link
                 await buildList.generateSoup(driver)
                 #embed the results and add a View to store the button(s).
-                await message.channel.send(embed=(await buildList.buildTable(await rqMsg.getSender())), view=soul.Buttons(await buildList.getSoup(), await buildList.getLink(), await buildList.getButtons()))
+                #in the event of a bad list, we need to send the embed immediately - easiest solution is to give buildtable the message and then raise an exception
+                try:
+                    await message.channel.send(embed=(await buildList.buildTable(await rqMsg.getSender(), message)), view=soul.Buttons(await buildList.getSoup(), await buildList.getLink(), await buildList.getButtons()))
+                except ValueError:
+                    pass
         
         driver.quit()
     #any exception encountered while parsing the list should result in the bot refusing to reply and continuing to look for new messages

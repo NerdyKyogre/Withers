@@ -6,7 +6,16 @@ It also contains superclass definitions for site-specific classes, such as messa
 import discord
 from selenium import webdriver
 from selenium_stealth import stealth
-import undetected_chromedriver as uc
+import requests
+from bs4 import BeautifulSoup
+#import undetected_chromedriver as uc
+
+#Global constants for user agents
+CHROME_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
+FIREFOX_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0"
+SAFARI_MAC = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15"
+EDGE_WIN = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.3124.95"
+CHROME_WIN_DEBUG = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36" # constant version, not updated
 
 '''
 NOTE:
@@ -170,16 +179,17 @@ async def startWebDriver():
     options.add_argument('--no-sandbox')
     #not specifically going out of our way to tell the site we're a bot helps with rate limiting
     options.add_argument("--disable-blink-features=AutomationControlled")
-    #options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    #options.add_experimental_option("useAutomationExtension", False)
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
     #the below three options improve performance
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-extensions')
     options.add_argument('--dns-prefetch-disable')
     #set user agent to mimic real chrome
-    options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 Safari/537.36")
-    driver = uc.Chrome(options=options)
-    #driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    options.add_argument("--user-agent=" + CHROME_WIN)
+    #driver = uc.Chrome(options=options, version_main=134)
+    driver = webdriver.Chrome(options=options)
+    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
     stealth(driver,
         languages=["en-US", "en"],
@@ -191,3 +201,93 @@ async def startWebDriver():
         )
 
     return driver
+
+async def setDefaultDriverOptions(options, headful=False):
+    '''
+    Sets the default chromedriver options for all driver instances
+    Inputs:
+        - options: Chrome Options object
+        - headful: Override to disable setting headless, defaults to False
+    Returns: modified version of options
+    '''
+    if headful == False:
+        options.add_argument('--headless')
+    options.add_argument('--window-size=1920x1032')
+    options.add_argument('--no-sandbox')
+    #not specifically going out of our way to tell the site we're a bot helps with rate limiting
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("useAutomationExtension", False)
+    #the below three options improve performance
+    options.add_argument('--disable-gpu')
+    options.add_argument('--disable-extensions')
+    options.add_argument('--dns-prefetch-disable')
+    
+    return options
+
+def updateUserAgents():
+    '''
+    Pulls the latest user agents from Useragents.me and updates the global definitions
+    Inputs: None
+    Returns: N/A
+    Not async as this function is meant to be called while initializing the bot
+    '''
+    #set up global variables
+    global CHROME_WIN 
+    global FIREFOX_WIN
+    global EDGE_WIN
+    global SAFARI_MAC
+
+    #request html from useragents.me
+    req = requests.get("https://www.useragents.me/#latest-windows-desktop-useragents").content
+    pageContent = BeautifulSoup(req, "html5lib")
+
+    for section in pageContent.find_all("div", class_="container"):
+        try:
+            if section.find("h2", id="latest-windows-desktop-useragents") is None: #this will throw an exception if it doesn't exist
+                raise(Exception) 
+            rows = section.find("tbody").find_all("tr")
+            #loop once for each agent - we want just the first entry for each browser (avoids ESR user agents)
+            #chrome
+            for row in rows:
+                if "Chrome" in row.find("td").get_text():
+                    CHROME_WIN = row.find("textarea").get_text()
+                    break
+            #firefox
+            for row in rows:
+                if "Firefox" in row.find("td").get_text():
+                    FIREFOX_WIN = row.find("textarea").get_text()
+                    break
+            #edge
+            for row in rows:
+                if "Edge" in row.find("td").get_text():
+                    EDGE_WIN = row.find("textarea").get_text()
+                    break
+        except Exception as e:
+            print(e)
+            pass
+        #macos has a separate table
+        try:
+            if section.find("h2", id="latest-mac-desktop-useragents") is None: #this will throw an exception if it doesn't exist
+                raise(Exception) 
+            rows = section.find("tbody").find_all("tr")
+            #safari
+            for row in rows:
+                if "Safari" in row.find("td").get_text():
+                    SAFARI_MAC = row.find("textarea").get_text()
+                    break
+        except Exception:
+            pass
+    
+
+async def getUserAgents():
+    '''
+    Returns the array of user agents for random selection
+    '''
+    return [CHROME_WIN, FIREFOX_WIN, SAFARI_MAC, EDGE_WIN]
+
+async def getStaticUserAgent():
+    '''
+    Returns a 1-element array containing the default chrome user agent, for modules that need a static/matching user agent.
+    '''
+    return [CHROME_WIN_DEBUG]
