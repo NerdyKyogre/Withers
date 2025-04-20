@@ -30,3 +30,5 @@ yarl==1.18.3
 undetected-chromedriver
 selenium-stealth
 requests
+html5lib
+setuptools
