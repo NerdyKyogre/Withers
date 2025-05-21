@@ -32,7 +32,7 @@ class Msg(soul.BuildListMsg):
         '''
         if text is None:
             #replace swedish links here for easier parsing - we'll set them back when we add
-            text = self.msgText.replace("komponentkoll.se/", "buildapc.gg/se/")
+            text = self.msgText.replace("komponentkoll.se/", "buildapc.gg/se/").replace("/bygg/", "/build/")
 
         # find substring of list link if it exists
         try:
@@ -50,7 +50,7 @@ class Msg(soul.BuildListMsg):
                 pass
 
         if (" " not in link) and ("/build/" in link): #check for this as this site name is prone to being mentioned outside of a link
-            self.links.append(link.replace("buildapc.gg/se/", "komponentkoll.se/"))
+            self.links.append(link.replace("buildapc.gg/se/", "komponentkoll.se/").replace("buildapc.gg/build/", "buildapc.gg/us/build/"))
 
         text = text.replace(link[8:], "")
         await self.findLinks(driver, text) #recurse on the remaining links in the message
@@ -92,12 +92,13 @@ class List(soul.BuildList):
             await asyncio.sleep(1)
         
         #open all parts to make product pages visible
-        elements = driver.find_elements(By.CLASS_NAME, 'summary')
+        #elements = driver.find_elements(By.CLASS_NAME, 'summary')
+        elements = driver.find_elements(By.TAG_NAME, 'picture')
         for element in elements:
             try:
                 driver.execute_script("arguments[0].scrollIntoView();", element)
                 element.click()
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.25)
             except Exception:
                 pass
         await asyncio.sleep(1) #need to wait for the link load function to complete, otherwise we feed "Loading..." into soup
@@ -170,6 +171,9 @@ class List(soul.BuildList):
             try:
                 partPrice = partRow.find("div", class_="price").get_text().strip()
 
+                #translating from swedish screws up formatting - undo what it does
+                partPrice = partPrice.replace("SEK", "kr").replace(",","")
+
                 #move kr to front and set up float so we can do regex
                 if "kr" in partPrice:
                     partPrice = ("kr " + partPrice.replace(" ", "").replace("kr", ".00"))
@@ -210,6 +214,7 @@ class List(soul.BuildList):
                 pass
 
         #format it to match other prices
+        total = total.replace("SEK", "kr").replace(",","")
         if "kr" in total:
             total = total.replace(" ", "").replace("kr", ".00")
             total = "kr " + total

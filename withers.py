@@ -82,7 +82,7 @@ def runBot():
             rqMsg = tweakers.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg, driver)
         #BAPCGG
-        if ("buildapc.gg" in message.content) or ("komponentkoll.se" in message.content) and ("/build/" in message.content):
+        if (("buildapc.gg" in message.content) or ("komponentkoll.se" in message.content)) and (("/build/" in message.content) or ("/bygg/" in message.content)):
             driver = await bapcgg.startWebDriver()
             rqMsg = bapcgg.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg, driver)
