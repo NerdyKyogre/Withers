@@ -58,6 +58,7 @@ def runBot():
         #ignore messages we send
         if message.author == client.user:
             return
+        
         # look for relevant part list link in message contents, then process it
         #PCPP
         if ("pcpartpicker.com/list/" in message.content) or ("pcpartpicker.com/b/" in message.content) or ("pcpartpicker.com/user/" in message.content):
@@ -67,7 +68,6 @@ def runBot():
             await processMessage(message, rqMsg, driver)
         #PCPT
         if ("pcpricetracker.in/b/s/" in message.content) and ("--use-extended-modules" in sys.argv):
-            #start webdriver instance for this message
             driver = await pcpt.startWebDriver()
             rqMsg = pcpt.Msg(message, message.content, str(message.author.mention))
             await processMessage(message, rqMsg, driver)
@@ -89,9 +89,14 @@ def runBot():
         #meupc
         if ("meupc.net/build/" in message.content):
             rqMsg = meupc.Msg(message, message.content, str(message.author.mention))
-            #start webdriver instance for this message
             driver = await meupc.startWebDriver()
             await processMessage(message, rqMsg, driver)
+        #hinta
+        if ("hinta.fi/ostoskori" in message.content):
+            rqMsg = hinta.Msg(message, message.content, str(message.author.mention))
+            driver = await hinta.startWebDriver()
+            await processMessage(message, rqMsg, driver)
+
         # if this is a DM, forward it to the support channel
         if ((isinstance(message.channel, discord.DMChannel)) and (DM_CHANNEL is not None)):
             # Getting the channel

@@ -102,10 +102,8 @@ Now you can interact with python regularly, with the newly created venv as the s
 ### <p align=center> That's it, you're good to go!
 
 ## What's new in this version:
-- Added support for the Geizhals network, Tweakers, Buildapc.gg, and Meupc.
-- Changed webdriver settings to improve usability -- you shouldn't see errors about an incorrect chromedriver version anymore.
-- Webdriver user agents now update automatically when the bot is started.
-- Updated requirements.txt to include requests. If you are updating your instance from a previous release, make sure to install requirements again before running the bot. 
+- Fixed a menagerie of bugs with buildapc.gg links; they should now all parse correctly, even the Swedish ones!
+- Added support for Hinta.fi.
 <br>
 
 #### <p align=center> For the full roadmap, please consult [our wiki's changelog page](https://github.com/NerdyKyogre/Withers/wiki/Changelog).

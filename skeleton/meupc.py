@@ -86,7 +86,7 @@ class List(soul.BuildList):
 
     async def buildTable(self, sender, message):
         '''
-        Parses data table from Geizhals network wishlist link into a discord embed
+        Parses data table from Meupc build list link into a discord embed
         Inputs: 
             sender - author of calling message, type string
             message - calling discord message object
