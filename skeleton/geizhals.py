@@ -148,6 +148,7 @@ class List(soul.BuildList):
 
             #grab list of all part cards
             partCards = self.soup.find_all("div", class_="card")
+            
         except Exception:
             return (await self.badListEmbed(sender, message))
 
@@ -160,52 +161,57 @@ class List(soul.BuildList):
 
         for i in range(len(partCards)):
             partCard = partCards[i]
-            #every element in these tables is inside a div - get the only link element inside product name. its href is part link, and text is part name
-            partNameField = partCard.find("div", class_="productname").find("a")
-            partName = partNameField.get_text().strip() 
-            partLink = partNameField["href"].strip()
-            #format into hyperlink
-            partName = ("[" + partName + "](" + partLink + ")")
 
-            #find part category
+            #find part category FIRST so we can loop over individual items within the category after
             #category is 3 fields - we want the SECOND one specifically
             partCategory = partCard.find("ol", class_="category-breadcrumb").find_all("a")[1].get_text().strip()
             partCategory = ("**" + partCategory + "**")
 
-            #wrap price check in try-catch; if the element doesn't exist (we're oos) it's N/A
-            try:
-                #get price per unit
-                #price is the text of a link to the offerlist for the part
-                partPrice = partCard.find("span", class_="bestprice").find("a").get_text().strip()
-                partPrice = partPrice.replace(",",".")
+            #categories can have multiple product entries within them
+            partProducts = partCard.find_all("div", class_="product")
+            for j in range(len(partProducts)):
+                partProduct = partProducts[j]
+                #every element in these tables is inside a div - get the only link element inside product name. its href is part link, and text is part name
+                partNameField = partProduct.find("div", class_="productname").find("a")
+                partName = partNameField.get_text().strip() 
+                partLink = partNameField["href"].strip()
+                #format into hyperlink
+                partName = ("[" + partName + "](" + partLink + ")")
 
-                #get quantity from parallel array - we need to adjust total price if it's more than 1
-                quantity = self.quantities[i]
+                #wrap price check in try-catch; if the element doesn't exist (we're oos) it's N/A
+                try:
+                    #get price per unit
+                    #price is the text of a link to the offerlist for the part
+                    partPrice = partProduct.find("span", class_="bestprice").find("a").get_text().strip()
+                    partPrice = partPrice.replace(",",".")
 
-                #if we have multiple, adjust part price in the same way as we did for pcpp
-                if quantity > 1:
-                    unitPrice = re.findall("\d+\.\d+", partPrice)
-                    totalPrice = quantity * (float(unitPrice[0]))
-                    partPrice = partPrice.replace(unitPrice[0], ("%.2f" % totalPrice))
-                    partName = ("**("+ str(quantity) + "x)** " + partName)
+                    #get quantity from parallel array - we need to adjust total price if it's more than 1
+                    quantity = self.quantities.pop(0)
 
-                partPrice =  ("``" + partPrice + "``")
+                    #if we have multiple or none, adjust part price in the same way as we did for pcpp
+                    if quantity != 1:
+                        unitPrice = re.findall("\d+\.\d+", partPrice)
+                        totalPrice = quantity * (float(unitPrice[0]))
+                        partPrice = partPrice.replace(unitPrice[0], ("%.2f" % totalPrice))
+                        partName = ("**("+ str(quantity) + "x)** " + partName)
 
-            except Exception:
-                partPrice = "``N/A``"
+                    partPrice =  ("``" + partPrice + "``")
 
-            #check to make sure we're not over the character limit
-            #do length check here
-            #length 4000 leaves room for the total in the 4096 character limit - Geizhals has minimal footer
-            if (not tooLong) and (len(componentList) > 4000):
-                tooLong = True
-            #we continue to parse the list as normal regardless of its length so we can count the number of remaining parts
-            if tooLong:
-                overCount += 1
-                continue
+                except Exception:
+                    partPrice = "``N/A``"
 
-            #add the part to the string
-            componentList = componentList + partCategory + " - " + partPrice + " - " + partName + "\n"
+                #check to make sure we're not over the character limit
+                #do length check here
+                #length 4000 leaves room for the total in the 4096 character limit - Geizhals has minimal footer
+                if (not tooLong) and (len(componentList) > 4000):
+                    tooLong = True
+                #we continue to parse the list as normal regardless of its length so we can count the number of remaining parts
+                if tooLong:
+                    overCount += 1
+                    continue
+
+                #add the part to the string
+                componentList = componentList + partCategory + " - " + partPrice + " - " + partName + "\n"
         
         #if we went over the character limit, explain ourselves
         if tooLong:

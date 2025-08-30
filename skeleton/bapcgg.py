@@ -101,7 +101,7 @@ class List(soul.BuildList):
                 await asyncio.sleep(0.25)
             except Exception:
                 pass
-        await asyncio.sleep(1) #need to wait for the link load function to complete, otherwise we feed "Loading..." into soup
+        await asyncio.sleep(2) #need to wait for the link load function to complete, otherwise we feed "Loading..." into soup
 
 
         self.soup = BeautifulSoup(driver.page_source,"html.parser")

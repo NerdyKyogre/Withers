@@ -61,7 +61,7 @@ def runBot():
         
         # look for relevant part list link in message contents, then process it
         #PCPP
-        if ("pcpartpicker.com/list/" in message.content) or ("pcpartpicker.com/b/" in message.content) or ("pcpartpicker.com/user/" in message.content):
+        if ("pcpartpicker.com/list" in message.content) or ("pcpartpicker.com/b/" in message.content) or ("pcpartpicker.com/user/" in message.content):
             rqMsg = pcpp.Msg(message, message.content, str(message.author.mention))
             #start webdriver instance for this message
             driver = await pcpp.startWebDriver()

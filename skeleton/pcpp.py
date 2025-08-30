@@ -30,8 +30,8 @@ class Msg(soul.BuildListMsg):
         '''
         #convert saved part lists and completed builds into regular list links in the message
         await self.buildsToLists(driver)
-        #strip out all #view= in the message to convert view links into saved lists
-        self.msgText = self.msgText.replace("#view=", "")
+        #strip out all #view= in the message to convert view links into saved lists, and replace newlines with spaces for easier parsing later
+        self.msgText = self.msgText.replace("#view=", "").replace("\n", " ")
         await self.savedToLists(driver)
 
         #check for blank list link
@@ -191,6 +191,9 @@ class Msg(soul.BuildListMsg):
         link = "https://"
         for i in range(start, start + length):
             try:
+                #if there's a hole in the link don't try to fill it
+                if text[i] == " ":
+                    return
                 link += text[i] 
             except Exception:
                 return
