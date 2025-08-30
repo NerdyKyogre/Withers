@@ -102,8 +102,9 @@ Now you can interact with python regularly, with the newly created venv as the s
 ### <p align=center> That's it, you're good to go!
 
 ## What's new in this version:
-- Fixed a menagerie of bugs with buildapc.gg links; they should now all parse correctly, even the Swedish ones!
-- Added support for Hinta.fi.
+- Fixed a bug that caused the bot to happily ignore you (or pull a random list from the backrooms) if you pasted the wrong PCPP link.
+- Added proper support for multiple items in the same category for Geizhals, fixing a bug that caused items to be assigned the wrong quantity.
+- Zero-quantity Geizhals items are now supported.
 <br>
 
 #### <p align=center> For the full roadmap, please consult [our wiki's changelog page](https://github.com/NerdyKyogre/Withers/wiki/Changelog).
